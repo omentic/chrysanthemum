@@ -15,13 +15,29 @@ pub fn parse_str(input: &str) -> Result<Expression, peg::error::ParseError<peg::
             = i:['a'..='z' | 'A'..='Z' | '0'..='9']+ {
                 i.iter().collect::<String>()
             }
+            rule constant() -> Expression
+            = p:"-"? c:['0'..='9']+ {
+                let value = c.iter().collect::<String>().parse::<Value>().unwrap();
+                Expression::Constant {
+                    term: Term {
+                        val: if let Some(_) = p {
+                            value.wrapping_neg()
+                        } else {
+                            value
+                        },
+                        kind: Type::Empty
+                    }
+                }
+            }
             rule kind() -> Type
             = k:identifier() {
                 match k.as_str() {
+                    "empty" => Type::Empty,
                     "unit" => Type::Unit,
                     "bool" => Type::Bool,
-                    "int" => Type::Natural,
-                    _ => panic!("invalid type")
+                    "nat" => Type::Natural,
+                    "int" => Type::Integer,
+                    _ => panic!("invalid type"), // fixme: raise an error
                 }
             }
             rule annotation() -> Expression
@@ -31,31 +47,22 @@ pub fn parse_str(input: &str) -> Result<Expression, peg::error::ParseError<peg::
                     kind: k
                 }
             }
-            rule constant() -> Expression
-            = c:['0'..='9']+ {
-                Expression::Constant {
-                    term: Term {
-                        val: c.iter().collect::<String>().parse::<Value>().unwrap(),
-                        kind: Type::Empty
-                    }
-                }
-            }
             rule variable() -> Expression
             = v:identifier() {
                 Expression::Variable {
                     id: v
                 }
             }
-            // fixme: lambda is causing problems with rust-peg
             rule abstraction() -> Expression
-            = "λ" " "* p:identifier() " "+ "." " "+ f:expression() {
+            = ("λ" / "lambda ") " "* p:identifier() " "* "." " "* f:expression() {
                 Expression::Abstraction {
                     param: p,
                     func: Box::new(f)
                 }
             }
+            // fixme: more cases should parse, but how?
             rule application() -> Expression
-            = "(" f:(abstraction() / annotation()) ")" " "+ a:expression() {
+            = "(" f:(annotation() / abstraction()) ")" " "* a:expression() {
                 Expression::Application {
                     func: Box::new(f),
                     arg: Box::new(a)

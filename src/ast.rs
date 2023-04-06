@@ -19,7 +19,7 @@ pub enum Expression {
 
 // _every_ type in our language is represented as this and interpreted as a type.
 // how to store more data than fits... hmm
-pub type Value = i8;
+pub type Value = u64;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Type {
@@ -27,6 +27,7 @@ pub enum Type {
     Unit,
     Bool,
     Natural,
+    Integer,
     // Float,
     // String,
     // Enum(Vec<Type>),
@@ -44,12 +45,12 @@ pub struct Term {
 impl fmt::Debug for Expression {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Expression::Annotation { expr, kind } => write!(f, "{:?}:{:?}", expr, kind),
-            Expression::Constant { term } => write!(f, "{}", term.val),
+            Expression::Annotation { expr, kind } => write!(f, "({:?}: {:?})", expr, kind),
+            Expression::Constant { term } => write!(f, "'{}", term.val),
             Expression::Variable { id } => write!(f, "{}", id),
             Expression::Abstraction { param, func } => write!(f, "(λ{}.{:?})", param, func),
-            Expression::Application { func, arg } => write!(f, "{:?} {:?}", func, arg),
-            Expression::Conditional { if_cond, if_then, if_else } => write!(f, "if {:?} then {:?} else {:?}", if_cond, if_then, if_else),
+            Expression::Application { func, arg } => write!(f, "({:?} {:?})", func, arg),
+            Expression::Conditional { if_cond, if_then, if_else } => write!(f, "(if {:?} then {:?} else {:?})", if_cond, if_then, if_else),
         }
     }
 }

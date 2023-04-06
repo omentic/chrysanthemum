@@ -17,7 +17,7 @@ pub fn execute(context: Context, expression: Expression) -> Term {
         Expression::Annotation { expr, .. } => return execute(context, *expr),
         Expression::Constant { term } => return term,
         Expression::Variable { id } => return context[&id],
-        Expression::Abstraction { .. } => panic!(),
+        Expression::Abstraction { .. } => panic!("attempting to execute an abstraction"),
         Expression::Application { func, arg } => {
             match *func {
                 Expression::Abstraction { param, func } => {
@@ -25,26 +25,15 @@ pub fn execute(context: Context, expression: Expression) -> Term {
                     context.insert(param, execute(context.clone(), *arg));
                     return execute(context, *func);
                 },
-                _ => panic!()
+                _ => panic!("attempting to execute an application to nothing")
             }
         },
         Expression::Conditional { if_cond, if_then, if_else } => {
             match execute(context.clone(), *if_cond).val {
                 1 => execute(context, *if_then),
                 0 => execute(context, *if_else),
-                _ => panic!()
+                _ => panic!("invalid type for a conditional")
             }
         },
-    }
-}
-
-// intentionally small: i want to run into errors
-/// assumption: the count is instantiated to zero
-fn uniquify(count: &mut u8) -> String {
-    *count += 1;
-    if *count == 0 {
-        panic!("we've overflowed!");
-    } else {
-        return String::from(format!("{:X}", count));
     }
 }

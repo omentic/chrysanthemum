@@ -1,14 +1,10 @@
 use std::io::{Write, stdout, stdin};
-use crate::ast::*;
 
-mod ast;
-mod classes;
-mod effects;
-mod parser;
-mod simple;
+use chrysanthemum::*;
+use chrysanthemum::ast::*;
 
 fn main() {
-    println!("type-systems");
+    println!("chrysanthemum");
     let mut input = String::new();
     loop {
         println!("infer, check, or execute? (i/c/e)");
@@ -43,7 +39,7 @@ fn main() {
 
                 input.clear();
                 stdin().read_line(&mut input).unwrap();
-                simple::execute(Context::new(), parser::parse(&input));
+                println!("{:?}", simple::execute(Context::new(), parser::parse(&input)));
             },
             _ => println!("invalid option {}. please try again.", input.trim())
         }

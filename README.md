@@ -3,7 +3,7 @@
 ## todo
 
 - [x] the simple lambda calculus: implement `execute`
-- [ ] to lose my sanity: implement `parse`
+- [x] to lose my sanity: implement `parse`
 - [ ] bidirectional typechecking: implement `infer` and `check`
 - [ ] simple effects: extend `ast`
 - [ ] type classes: implement `monomorphize`
