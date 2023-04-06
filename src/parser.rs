@@ -29,16 +29,18 @@ pub fn parse_str(input: &str) -> Result<Expression, peg::error::ParseError<peg::
                     }
                 }
             }
+            // fucking awful but i don't know another way
+            // k:("empty" / "unit" / etc) returns ()
+            // and i can't seem to match and raise a parse error
+            // so ¯\_(ツ)_/¯
+            rule empty() -> Type = k:"empty" {Type::Empty}
+            rule unit() -> Type = k:"unit" {Type::Unit}
+            rule boolean() -> Type = k:"bool" {Type::Boolean}
+            rule natural() -> Type = k:"nat" {Type::Natural}
+            rule integer() -> Type = k:"int" {Type::Integer}
             rule kind() -> Type
-            = k:identifier() {
-                match k.as_str() {
-                    "empty" => Type::Empty,
-                    "unit" => Type::Unit,
-                    "bool" => Type::Boolean,
-                    "nat" => Type::Natural,
-                    "int" => Type::Integer,
-                    _ => panic!("invalid type"), // fixme: raise an error
-                }
+             = k:(empty() / unit() / boolean() / natural() / integer()) {
+                k
             }
             rule annotation() -> Expression
             = e:(conditional() / abstraction() / application() / constant() / variable()) " "* ":" " "* k:kind() {

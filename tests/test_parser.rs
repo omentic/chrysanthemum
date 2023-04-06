@@ -17,7 +17,7 @@ fn test_simple_phrases() {
 fn test_simple_annotations() {
     assert_eq!(parse_str("t: int"), Ok(Ann(Var("t"), Type::Integer)));
     assert_eq!(parse_str("12: nat"), Ok(Ann(Const(12, Type::Empty), Type::Natural)));
-    // assert!(parse_str("t: fake").is_err()); // fixme: currently panics
+    assert!(parse_str("t: fake").is_err());
 }
 
 #[test]
