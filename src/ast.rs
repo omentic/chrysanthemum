@@ -25,7 +25,7 @@ pub type Value = u64;
 pub enum Type {
     Empty,
     Unit,
-    Bool,
+    Boolean,
     Natural,
     Integer,
     // Float,

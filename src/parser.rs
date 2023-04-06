@@ -34,7 +34,7 @@ pub fn parse_str(input: &str) -> Result<Expression, peg::error::ParseError<peg::
                 match k.as_str() {
                     "empty" => Type::Empty,
                     "unit" => Type::Unit,
-                    "bool" => Type::Bool,
+                    "bool" => Type::Boolean,
                     "nat" => Type::Natural,
                     "int" => Type::Integer,
                     _ => panic!("invalid type"), // fixme: raise an error
