@@ -92,6 +92,7 @@ pub fn parse_str(input: &str) -> Result<Expression, peg::error::ParseError<peg::
 }
 
 /// Parses a Nim-like language into an AST.
+#[allow(unused_variables)]
 pub fn parse_file(path: &str) -> Vec<Expression> {
     todo!();
 }

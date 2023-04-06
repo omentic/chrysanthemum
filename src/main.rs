@@ -30,7 +30,7 @@ fn main() {
 
                 input.clear();
                 stdin().read_line(&mut input).unwrap();
-                simple::check(Context::new(), parser::parse(&input));
+                simple::check(Context::new(), parser::parse(&input), Type::Empty);
             },
             "e" | "r" | "execute" | "run" => {
                 println!("enter expression to execute");
