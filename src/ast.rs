@@ -12,16 +12,17 @@ pub enum Expression {
     Annotation{expr: Box<Expression>, kind: Type},
     Constant{term: Term},
     Variable{id: Identifier},
+    // note: we keep parameters as an Identifier because we annotate the WHOLE Abstraction
     Abstraction{param: Identifier, func: Box<Expression>},
     Application{func: Box<Expression>, arg: Box<Expression>},
     Conditional{if_cond: Box<Expression>, if_then: Box<Expression>, if_else: Box<Expression>}
 }
 
 // _every_ type in our language is represented as this and interpreted as a type.
-// how to store more data than fits... hmm
+// how to store more data than fits... hmm... a problem for later
 pub type Value = u64;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
     Empty,
     Unit,
@@ -32,11 +33,11 @@ pub enum Type {
     // String,
     // Enum(Vec<Type>),
     // Record(Vec<Type>),
-    // Function{from: Box<Type>, to: Box<Type>},
+    Function{from: Box<Type>, to: Box<Type>},
 }
 
 // this means that functions cannot have types? unless we put them as empty values ig
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Term {
     pub val: Value,
     pub kind: Type, // currently useless / redundant: will be useful for casting
