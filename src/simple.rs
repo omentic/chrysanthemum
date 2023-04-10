@@ -14,16 +14,32 @@ pub fn check(context: Context, expression: Expression, target: Type) -> bool {
                 None => false,
             }
         },
-        Expression::Abstraction { param, func } => todo!(),
-        Expression::Application { func, arg } => todo!(),
-        Expression::Conditional { if_cond, if_then, if_else } => todo!(),
+        // fixme: i don't think this works
+        Expression::Abstraction { param, func } => {
+            todo!()
+        },
+        Expression::Application { func, arg } => {
+            match *func {
+                Expression::Abstraction { param, func } => {
+                    let mut context = context;
+                    context.insert(param, Term { val: 0, kind: arg.kind });
+                    return check(context, *func, target);
+                },
+                _ => false
+            }
+        },
+        Expression::Conditional { if_cond, if_then, if_else } => {
+            check(context.clone(), *if_cond, Type::Boolean) &&
+            check(context.clone(), *if_then, target) &&
+            check(context.clone(), *if_else, target)
+        },
     }
 }
 
 // empty's gonna cause problems
 pub fn infer(context: Context, expression: Expression) -> Option<Type> {
     match expression {
-        Expression::Annotation { expr, kind } =>  Some(kind),
+        Expression::Annotation { expr, kind } => Some(kind),
         Expression::Constant { term } => Some(term.kind),
         Expression::Variable { id } => {
             match context.get(&id) {
@@ -31,8 +47,30 @@ pub fn infer(context: Context, expression: Expression) -> Option<Type> {
                 None => None
             }
         },
-        Expression::Abstraction { param, func } => return None,
-        Expression::Application { func, arg } => return None,
+        // this is probably bad. we don't know what type param is since it's a raw identifier.
+        // to fix: probably either require param to be annotated (good idea?), or
+        // allow arbitrary expressions (bad idea?)
+        // edit: turns out the typed lambda calculus actually REQUIREs annotations on parameters lmao
+        Expression::Abstraction { param, func } => {
+            let mut context = context;
+            context.insert(param, Term { val: 0, kind: Type::Empty}); // even worse hack
+            return infer(context, *func);
+        },
+        Expression::Application { func, arg } => {
+            match *func {
+                Expression::Abstraction { param, func } => {
+                    match infer(context.clone(), *arg) {
+                        Some(arg) => {
+                            let mut context = context;
+                            context.insert(param, Term { val: 0, kind: arg }); // hack
+                            return infer(context, *func);
+                        },
+                        None => None
+                    }
+                },
+                _ => None
+            }
+        },
         Expression::Conditional { if_cond, if_then, if_else } => {
             if infer(context.clone(), *if_cond) == Some(Type::Boolean) {
                 let kind = infer(context.clone(), *if_then);
