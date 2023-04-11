@@ -96,3 +96,92 @@ pub fn parse_str(input: &str) -> Result<Expression, peg::error::ParseError<peg::
 pub fn parse_file(path: &str) -> Vec<Expression> {
     todo!();
 }
+
+/// Converts a whitespace-indented language into a regular bracketed language for matching with PEGs
+/// Then, tokens are known to be separated by [\n ]+ (except strings. problem for later.)
+pub fn lex(input: &str) -> Result<String, &'static str> {
+
+    #[derive(Eq, PartialEq)]
+    enum Previous {
+        Start,
+        Block,
+        Line,
+    }
+    struct State {
+        blank: bool,    // is the line entirely whitespace so far?
+        level: usize,   // current indentation level
+        count: usize,   // current whitespace count
+        previous: Previous,
+    }
+    let indent_size: usize = 2;
+
+    let mut state = State { blank: true, level: 0, count: 0, previous: Previous::Start };
+    let mut buffer = String::new();
+    let mut result = String::new();
+
+    for c in input.chars() {
+        match c {
+            '\n' => {
+                if !buffer.is_empty() {
+                    if state.count == state.level {
+                        if state.previous != Previous::Start {
+                            result.push(';');
+                            result.push('\n');
+                        }
+                        state.previous = Previous::Line;
+                    } else if state.level + indent_size == state.count {
+                        result.push(' ');
+                        result.push('{');
+                        result.push('\n');
+                        state.level = state.count;
+                        state.previous = Previous::Line;
+                    } else if state.count > state.level + indent_size {
+                        return Err("invalid jump in indentation");
+                    } else if state.count % indent_size != 0 {
+                        return Err("incorrect indentation offset, must be a multiple of indent_size");
+                    } else if state.level > state.count {
+                        while state.level > state.count {
+                            if state.previous == Previous::Line {
+                                result.push(';');
+                            }
+                            state.level -= indent_size;
+                            result.push('\n');
+                            result.push_str(" ".repeat(state.level).as_str());
+                            result.push('}');
+                            state.previous = Previous::Block;
+                        }
+                        result.push('\n');
+                    } else {
+                        return Err("unknown indentation error");
+                    }
+
+                    result.push_str(" ".repeat(state.count).as_str());
+                    result.push_str(&buffer);
+
+                    state.count = 0;
+                    buffer.clear();
+                }
+                state.blank = true;
+            },
+            ' ' if state.blank => {
+                state.count += 1;
+            },
+            _ => {
+                if state.blank {
+                    state.blank = false;
+                }
+                buffer.push(c);
+            },
+        }
+    }
+    if state.previous == Previous::Line {
+        result.push(';');
+    }
+    while state.level != 0 {
+        state.level -= 2;
+        result.push('\n');
+        result.push_str(" ".repeat(state.level).as_str());
+        result.push('}');
+    }
+    return Ok(result);
+}
