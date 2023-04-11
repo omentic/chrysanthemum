@@ -8,32 +8,25 @@ pub fn check(context: Context, expression: Expression, target: Type) -> Result<(
     match expression {
         Expression::Annotation { expr, kind } => Err(("attempting to typecheck an annotation", context, target)),
         // Bt-CheckInfer
-        Expression::Constant { term } => {
-            if term.kind == target {
-                Ok(())
-            } else {
-                Err(("constant is of wrong type", context, target))
-            }
+        Expression::Constant { term } => match term.kind == target {
+            true => Ok(()),
+            false => Err(("constant is of wrong type", context, target))
         },
         // Bt-CheckInfer
-        Expression::Variable { id } => {
-            // in the future: extend to closures? nah probably not
-            match context.get(&id) {
-                Some(term) if term.kind == target => Ok(()),
-                Some(_) => Err(("variable is of wrong type", context, target)),
-                None => Err(("failed to find variable in context", context, target))
-            }
+        // in the future: extend to closures? nah probably not
+        Expression::Variable { id } => match context.get(&id) {
+            Some(term) if term.kind == target => Ok(()),
+            Some(_) => Err(("variable is of wrong type", context, target)),
+            None => Err(("failed to find variable in context", context, target))
         },
         // Bt-Abs
-        Expression::Abstraction { param, func } => {
-            match target {
-                Type::Function { from, to } => {
-                    let mut context = context;
-                    context.insert(param, Term { val: 0, kind: *from }); // hack
-                    return check(context, *func, *to);
-                },
-                _ => Err(("attempting to check an abstraction with a non-function type", context, target))
-            }
+        Expression::Abstraction { param, func } => match target {
+            Type::Function { from, to } => {
+                let mut context = context;
+                context.insert(param, Term { val: 0, kind: *from }); // hack
+                return check(context, *func, *to);
+            },
+            _ => Err(("attempting to check an abstraction with a non-function type", context, target))
         },
         Expression::Application { func, arg } => Err(("attempting to check an application", context, target)),
         // T-If
@@ -54,21 +47,16 @@ pub fn infer(context: Context, expression: Expression) -> Result<Type, (&'static
         // Bt-True / Bt-False / etc
         Expression::Constant { term } => Ok(term.kind),
         // Bt-Var
-        Expression::Variable { id } => {
-            match context.get(&id) {
-                Some(term) => Ok(term.clone().kind),
-                None => Err(("failed to find variable in context", context, Type::Empty))
-            }
+        Expression::Variable { id } => match context.get(&id) {
+            Some(term) => Ok(term.clone().kind),
+            None => Err(("failed to find variable in context", context, Type::Empty))
         },
         // Bt-App
-        Expression::Application { func, arg } => {
-            let expr = infer(context.clone(), *func)?;
-            match expr {
-                Type::Function { from, to } => {
-                    check(context, *arg, *from).map(|x| *to)
-                },
-                _ => Err(("application abstraction is not a function type", context, Type::Empty))
-            }
+        Expression::Application { func, arg } => match infer(context.clone(), *func)? {
+            Type::Function { from, to } => {
+                check(context, *arg, *from).map(|x| *to)
+            },
+            _ => Err(("application abstraction is not a function type", context, Type::Empty))
         },
         Expression::Abstraction { param, func } => Err(("attempting to infer from an abstraction", context, Type::Empty)),
         // idk

@@ -2,13 +2,31 @@ use crate::ast::*;
 
 // (λx:T.y): T z
 pub fn parse(input: &str) -> Expression {
-    return parse_str(input).expect("invalid expression");
+    match parse_lambda(input) {
+        Ok(expr) => return expr,
+        Err(e) => println!("invalid expression! {:?}", e)
+    }
+    return Expression::Constant { term: Term { val: 0, kind: Type::Empty } };
+}
+
+/// Parses a Nim-like language into an AST.
+pub fn parse_file(path: &str) -> Vec<Expression> {
+    match std::fs::read_to_string(path) {
+        Ok(file) => match lex(&file) {
+            Ok(input) => match parse_lang(&input) {
+                Ok(expr) => return expr,
+                Err(e) => println!("failed to parse file! {:?}", e),
+            },
+            Err(e) => println!("failed to lex file! {:?}", e),
+        },
+        Err(e) => println!("failed to read file! {:?}", e),
+    }
+    return Vec::new();
 }
 
 /// Parses a lambda-calculus-like language into an AST.
-pub fn parse_str(input: &str) -> Result<Expression, peg::error::ParseError<peg::str::LineCol>> {
-    // this is kinda awful
-    // i miss my nim pegs
+pub fn parse_lambda(input: &str) -> Result<Expression, peg::error::ParseError<peg::str::LineCol>> {
+    // this is kinda awful, i miss my simple nim pegs
     peg::parser!{
         grammar lambda() for str {
             rule identifier() -> String
@@ -86,21 +104,12 @@ pub fn parse_str(input: &str) -> Result<Expression, peg::error::ParseError<peg::
             = expression() ** ("\n"+)
         }
     }
-    // assert_eq!(lambda::expression("(λx:bool.x)").unwrap(), lambda::expression("(λx: bool . x)").unwrap());
-
     return lambda::expression(input.trim());
-}
-
-/// Parses a Nim-like language into an AST.
-#[allow(unused_variables)]
-pub fn parse_file(path: &str) -> Vec<Expression> {
-    todo!();
 }
 
 /// Converts a whitespace-indented language into a regular bracketed language for matching with PEGs
 /// Then, tokens are known to be separated by [\n ]+ (except strings. problem for later.)
 pub fn lex(input: &str) -> Result<String, &'static str> {
-
     #[derive(Eq, PartialEq)]
     enum Previous {
         Start,
@@ -119,6 +128,7 @@ pub fn lex(input: &str) -> Result<String, &'static str> {
     let mut buffer = String::new();
     let mut result = String::new();
 
+    // wow lexers are hard
     for c in input.chars() {
         match c {
             '\n' => {
@@ -146,7 +156,7 @@ pub fn lex(input: &str) -> Result<String, &'static str> {
                             }
                             state.level -= indent_size;
                             result.push('\n');
-                            result.push_str(" ".repeat(state.level).as_str());
+                            result.push_str(&" ".repeat(state.level));
                             result.push('}');
                             state.previous = Previous::Block;
                         }
@@ -155,7 +165,7 @@ pub fn lex(input: &str) -> Result<String, &'static str> {
                         return Err("unknown indentation error");
                     }
 
-                    result.push_str(" ".repeat(state.count).as_str());
+                    result.push_str(&" ".repeat(state.count));
                     result.push_str(&buffer);
 
                     state.count = 0;
@@ -180,8 +190,15 @@ pub fn lex(input: &str) -> Result<String, &'static str> {
     while state.level != 0 {
         state.level -= 2;
         result.push('\n');
-        result.push_str(" ".repeat(state.level).as_str());
+        result.push_str(&" ".repeat(state.level));
         result.push('}');
     }
     return Ok(result);
+}
+
+/// Parses a simple language with bracket-based indentation and end-of-term semicolons.
+/// The lex() function can turn an indentation-based language into a language recognizable by this.
+#[allow(unused_variables)]
+pub fn parse_lang(input: &str) -> Result<Vec<Expression>, peg::error::ParseError<peg::str::LineCol>> {
+    todo!();
 }

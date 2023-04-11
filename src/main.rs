@@ -21,7 +21,7 @@ fn main() {
 
                 input.clear();
                 stdin().read_line(&mut input).unwrap();
-                match simple::infer(Context::new(), parser::parse(&input)) {
+                match simple::infer(Context::new(), parser::parse_lambda(&input).unwrap()) {
                     Ok(term) => println!("infers! {:?}", term),
                     Err(e) => println!("{:?}", e),
                 }
@@ -36,7 +36,7 @@ fn main() {
                 let kind = simple::infer(Context::new(), parser::parse(&input));
                 match kind {
                     Ok(kind) => {
-                        match simple::check(Context::new(), parser::parse(&input), kind) {
+                        match simple::check(Context::new(), parser::parse_lambda(&input).unwrap(), kind) {
                             Ok(_) => println!("checks!"),
                             Err(e) => println!("{:?}", e),
                         }
@@ -51,7 +51,7 @@ fn main() {
 
                 input.clear();
                 stdin().read_line(&mut input).unwrap();
-                match simple::execute(Context::new(), parser::parse(&input)) {
+                match simple::execute(Context::new(), parser::parse_lambda(&input).unwrap()) {
                     Ok(term) => println!("{:?}", term),
                     Err(e) => println!("{:?}", e)
                 }
