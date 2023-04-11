@@ -29,11 +29,11 @@ pub fn parse_lambda(input: &str) -> Result<Expression, peg::error::ParseError<pe
     // this is kinda awful, i miss my simple nim pegs
     peg::parser! {
         grammar lambda() for str {
-            rule identifier() -> String
+            rule ident() -> String
             = i:['a'..='z' | 'A'..='Z' | '0'..='9']+ {
                 i.iter().collect::<String>()
             }
-            rule constant() -> Expression
+            rule cons() -> Expression
             = p:"-"? c:['0'..='9']+ {
                 let value = c.iter().collect::<String>().parse::<Value>().unwrap();
                 Expression::Constant {
@@ -56,55 +56,69 @@ pub fn parse_lambda(input: &str) -> Result<Expression, peg::error::ParseError<pe
             rule boolean() -> Type = k:"bool" {Type::Boolean}
             rule natural() -> Type = k:"nat" {Type::Natural}
             rule integer() -> Type = k:"int" {Type::Integer}
+            // fixme: brackets are necessary here
+            rule function() -> Type = "(" f:kind() " "* "->" " "* t:kind() ")" {
+                Type::Function { from: Box::new(f), to: Box::new(t) }
+            }
             rule kind() -> Type
-             = k:(empty() / unit() / boolean() / natural() / integer()) {
+             = k:(function() / empty() / unit() / boolean() / natural() / integer()) {
                 k
             }
-            rule annotation() -> Expression
-            = e:(conditional() / abstraction() / application() / constant() / variable()) " "* ":" " "* k:kind() {
+            rule ann() -> Expression
+            = e:(bracketed() / (cond() / abs() / app() / cons() / var())) " "* ":" " "* k:kind() {
                 Expression::Annotation {
                     expr: Box::new(e),
                     kind: k
                 }
             }
-            rule variable() -> Expression
-            = v:identifier() {
+            rule var() -> Expression
+            = v:ident() {
                 Expression::Variable {
                     id: v
                 }
             }
-            rule abstraction() -> Expression
-            = ("λ" / "lambda ") " "* p:identifier() " "* "." " "* f:expression() {
+            rule abs() -> Expression
+            = ("λ" / "lambda ") " "* p:ident() " "* "." " "* f:expr() {
                 Expression::Abstraction {
                     param: p,
                     func: Box::new(f)
                 }
             }
             // fixme: more cases should parse, but how?
-            rule application() -> Expression
-            = "(" f:(annotation() / abstraction()) ")" " "* a:expression() {
+            rule app() -> Expression
+            = "(" f:expr() ")" " "* a:expr() {
                 Expression::Application {
                     func: Box::new(f),
                     arg: Box::new(a)
                 }
             }
-            rule conditional() -> Expression
-            = "if" " "+ c:expression() " "+ "then" " "+ t:expression() " "+ "else" " "+ e:expression() {
+            rule cond() -> Expression
+            = "if" " "+ c:expr() " "+ "then" " "+ t:expr() " "+ "else" " "+ e:expr() {
                 Expression::Conditional {
                     if_cond: Box::new(c),
                     if_then: Box::new(t),
                     if_else: Box::new(e)
                 }
             }
-            pub rule expression() -> Expression
-            = e:(conditional() / annotation() / abstraction() / application() / constant() / variable()) {
+            rule unbracketed() -> Expression
+            = e:(cond() / ann() / abs() / app() / cons() / var()) {
                 e
             }
-            pub rule ast() -> Vec<Expression>
-            = expression() ** ("\n"+)
+            rule bracketed() -> Expression
+            = "(" " "* e:(cond() / ann() / abs() / app() / cons() / var()) " "* ")" {
+                e
+            }
+            pub rule expr() -> Expression
+            // what the fuck
+            // why doesn't = " "* e:(unbracketed() / bracketed()) " "* work
+            = e:(unbracketed() / bracketed()) {
+                e
+            }
+            // pub rule ast() -> Vec<Expression>
+            // = expr() ** ("\n"+)
         }
     }
-    return lambda::expression(input.trim());
+    return lambda::expr(input.trim());
 }
 
 /// Converts a whitespace-indented language into a regular bracketed language for matching with PEGs

@@ -1,3 +1,5 @@
+#![allow(non_upper_case_globals)]
+
 use chrysanthemum::ast::*;
 use chrysanthemum::parser::*;
 use chrysanthemum::util::*;
@@ -26,7 +28,7 @@ fn test_simple_expressions() {
     assert_eq!(parse_lambda("λ x.y"), Ok(Abs("x", Var("y"))));
     assert_eq!(parse_lambda("λx.y"), Ok(Abs("x", Var("y"))));
     assert_eq!(parse_lambda("lambda x . y"), Ok(Abs("x", Var("y"))));
-    assert!(parse_lambda("(λx.y)").is_err()); // fixme: should be fine
+    assert_eq!(parse_lambda("(λx.y)"), Ok(Abs("x", Var("y"))));
     assert_eq!(parse_lambda("(λx.y) x"), Ok(App(Abs("x", Var("y")), Var("x"))));
     assert_eq!(parse_lambda("(λx.y) x"), Ok(App(Abs("x", Var("y")), Var("x"))));
     assert_eq!(parse_lambda("if x then y else z"), Ok(Cond(Var("x"), Var("y"), Var("z"))));
@@ -40,7 +42,57 @@ fn test_complex_expressions() {
 }
 
 #[test]
-fn test_file() {
-
+fn test_complex_annotations() {
+    assert_eq!(parse_lambda("(lambda x . y)  : int"), Ok(Ann(Abs("x", Var("y")), Type::Integer)));
+    assert_eq!(parse_lambda("((lambda x. y): (int -> int)) 413: int"), Ok(App(Ann(Abs("x", Var("y")), Type::Function { from: Box::new(Type::Integer), to: Box::new(Type::Integer) }), Ann(Const(413, Type::Empty), Type::Integer))));
+    assert_eq!(parse_lambda("if 0: bool then 1: bool else 2: int"), Ok(Cond(Ann(Const(0, Type::Empty), Type::Boolean), Ann(Const(1, Type::Empty), Type::Boolean), Ann(Const(2, Type::Empty), Type::Integer))));
+    assert_eq!(parse_lambda("(lambda x. if x then 1: bool else 0: bool): (int -> bool)"), Ok(Ann(Abs("x", Cond(Var("x"), Ann(Const(1, Type::Empty), Type::Boolean), Ann(Const(0, Type::Empty), Type::Boolean))), Type::Function { from: Box::new(Type::Integer), to: Box::new(Type::Boolean) })));
+    assert_eq!(parse_lambda("(lambda x. if x then 1: int else 0: int): (bool -> int)"), Ok(Ann(Abs("x", Cond(Var("x"), Ann(Const(1, Type::Empty), Type::Integer), Ann(Const(0, Type::Empty), Type::Integer))), Type::Function { from: Box::new(Type::Boolean), to: Box::new(Type::Integer) })));
+    assert_eq!(parse_lambda("(lambda x. if x then 0 else 1): (bool -> bool)"), Ok(Ann(Abs("x", Cond(Var("x"), Const(0, Type::Empty), Const(1, Type::Empty))), Type::Function { from: Box::new(Type::Boolean), to: Box::new(Type::Boolean) })));
 }
 
+const program: &'static str =
+"func foo() =
+  bar
+  if this:
+    that
+  else:
+    this
+
+hello
+foo
+bar
+baz
+func foo =
+  this
+  if that:
+    then this
+";
+
+const lexed: &'static str =
+"func foo() = {
+  bar;
+  if this: {
+    that;
+  }
+  else: {
+    this;
+  }
+}
+hello;
+foo;
+bar;
+baz;
+func foo = {
+  this;
+  if that: {
+    then this;
+  }
+}";
+
+#[test]
+fn test_lexer() {
+    let result = lex(program);
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), lexed);
+}
