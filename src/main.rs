@@ -21,16 +21,28 @@ fn main() {
 
                 input.clear();
                 stdin().read_line(&mut input).unwrap();
-                simple::infer(Context::new(), parser::parse(&input));
+                match simple::infer(Context::new(), parser::parse(&input)) {
+                    Ok(term) => println!("infers! {:?}", term),
+                    Err(e) => println!("{:?}", e),
+                }
             },
-            "c" | "t" | "check" | "typecheck" => {
+            "c" | "t" | "check" => {
                 println!("enter fully annotated expression to typecheck");
                 print!("\x1b[1m====> \x1b[22m");
                 stdout().flush().unwrap();
 
                 input.clear();
                 stdin().read_line(&mut input).unwrap();
-                simple::check(Context::new(), parser::parse(&input), Type::Empty);
+                let kind = simple::infer(Context::new(), parser::parse(&input));
+                match kind {
+                    Ok(kind) => {
+                        match simple::check(Context::new(), parser::parse(&input), kind) {
+                            Ok(_) => println!("checks!"),
+                            Err(e) => println!("{:?}", e),
+                        }
+                    },
+                    Err(_) => println!("failed to infer high-level type!")
+                }
             },
             "e" | "r" | "execute" | "run" => {
                 println!("enter expression to execute");
@@ -39,7 +51,10 @@ fn main() {
 
                 input.clear();
                 stdin().read_line(&mut input).unwrap();
-                println!("{:?}", simple::execute(Context::new(), parser::parse(&input)));
+                match simple::execute(Context::new(), parser::parse(&input)) {
+                    Ok(term) => println!("{:?}", term),
+                    Err(e) => println!("{:?}", e)
+                }
             },
             _ => println!("invalid option {}. please try again.", input.trim())
         }
