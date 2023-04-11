@@ -4,10 +4,10 @@
 
 - [x] the simple lambda calculus: implement `execute`
 - [x] to lose my sanity: implement `parse`
-- [ ] bidirectional typechecking: implement `infer` and `check`
+- [x] bidirectional typechecking: implement `infer` and `check`
 - [ ] simple effects: extend `ast`
 - [ ] type classes: implement `monomorphize`
-- [ ] to be fancy: implement `parse_file`
+- [x] to be fancy: implement `parse_file`
 - [ ] extend to additional basic types: implement `cast`
 - [ ] extend to complex types
 - [ ] testtesttest

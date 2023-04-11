@@ -27,7 +27,7 @@ pub fn parse_file(path: &str) -> Vec<Expression> {
 /// Parses a lambda-calculus-like language into an AST.
 pub fn parse_lambda(input: &str) -> Result<Expression, peg::error::ParseError<peg::str::LineCol>> {
     // this is kinda awful, i miss my simple nim pegs
-    peg::parser!{
+    peg::parser! {
         grammar lambda() for str {
             rule identifier() -> String
             = i:['a'..='z' | 'A'..='Z' | '0'..='9']+ {
@@ -121,10 +121,11 @@ pub fn lex(input: &str) -> Result<String, &'static str> {
         level: usize,   // current indentation level
         count: usize,   // current whitespace count
         previous: Previous,
+        comment: bool   // is the current line a comment?
     }
     let indent_size: usize = 2;
 
-    let mut state = State { blank: true, level: 0, count: 0, previous: Previous::Start };
+    let mut state = State { blank: true, level: 0, count: 0, previous: Previous::Start, comment: false };
     let mut buffer = String::new();
     let mut result = String::new();
 
@@ -169,6 +170,7 @@ pub fn lex(input: &str) -> Result<String, &'static str> {
                     result.push_str(&buffer);
 
                     state.count = 0;
+                    state.comment = false;
                     buffer.clear();
                 }
                 state.blank = true;
@@ -176,11 +178,17 @@ pub fn lex(input: &str) -> Result<String, &'static str> {
             ' ' if state.blank => {
                 state.count += 1;
             },
+            '#' => {
+                state.blank = false;
+                state.comment = true;
+            },
             _ => {
                 if state.blank {
                     state.blank = false;
                 }
-                buffer.push(c);
+                if !state.comment {
+                    buffer.push(c);
+                }
             },
         }
     }
@@ -200,5 +208,85 @@ pub fn lex(input: &str) -> Result<String, &'static str> {
 /// The lex() function can turn an indentation-based language into a language recognizable by this.
 #[allow(unused_variables)]
 pub fn parse_lang(input: &str) -> Result<Vec<Expression>, peg::error::ParseError<peg::str::LineCol>> {
-    todo!();
+    peg::parser! {
+        grammar puck() for str {
+            // whitespace
+            rule w() = ("\n" / " ")+
+            // identifiers
+            rule ident() -> String = i:['a'..='z' | 'A'..='Z' | '0'..='9']+ {
+                i.iter().collect::<String>()
+            }
+            // constants
+            rule cons() -> Expression = p:"-"? c:['0'..='9']+ {
+                let value = c.iter().collect::<String>().parse::<Value>().unwrap();
+                Expression::Constant {
+                    term: Term {
+                        val: if let Some(_) = p {
+                            value.wrapping_neg()
+                        } else {
+                            value
+                        },
+                        kind: Type::Empty
+                    }
+                }
+            }
+            // types
+            // still fucking awful
+            rule empty() -> Type = k:"empty" {Type::Empty}
+            rule unit() -> Type = k:"unit" {Type::Unit}
+            rule boolean() -> Type = k:"bool" {Type::Boolean}
+            rule natural() -> Type = k:"nat" {Type::Natural}
+            rule integer() -> Type = k:"int" {Type::Integer}
+            rule function() -> Type = f:kind() w() "->" w() t:kind() {
+                Type::Function { from: Box::new(f), to: Box::new(t) }
+            }
+            rule kind() -> Type
+             = k:(empty() / unit() / boolean() / natural() / integer()) {
+                k
+            }
+            rule ann() -> Expression
+            = e:(cond() / abs() / app() / cons() / var()) w() ":" w() k:kind() {
+                Expression::Annotation {
+                    expr: Box::new(e),
+                    kind: k
+                }
+            }
+            rule var() -> Expression
+            = v:ident() {
+                Expression::Variable {
+                    id: v
+                }
+            }
+            rule abs() -> Expression
+            = "func" "(" p:ident() ")" w() k:function() w() "=" w() "{" f:expr() "}" {
+                Expression::Annotation {
+                    expr: Box::new(Expression::Abstraction { param: p, func: Box::new(f) }),
+                    kind: k
+                }
+            }
+            // fixme: this requires, uh, refactoring the ast...
+            rule app() -> Expression
+            = f:ident() "(" a:expr() ")" {
+                Expression::Application {
+                    func: Box::new(Expression::Variable { id: f }),
+                    arg: Box::new(a)
+                }
+            }
+            rule cond() -> Expression
+            = "if" w() c:expr() w() ":" w() "{" w() t:expr() w() "}" w() "else:" w() "{" w() e:expr() w() "}" {
+                Expression::Conditional {
+                    if_cond: Box::new(c),
+                    if_then: Box::new(t),
+                    if_else: Box::new(e)
+                }
+            }
+            pub rule expr() -> Expression
+            = w()? e:(cond()) w()? {
+                e
+            }
+            pub rule file() -> Vec<Expression>
+            = expr() ++ w()
+        }
+    }
+    return puck::file(input);
 }
