@@ -10,7 +10,7 @@
 - [x] to be fancy: implement `parse_file`
 - [ ] extend to additional basic types: implement `cast`
 - [ ] extend to complex types
-- [ ] testtesttest
+- [x] testtesttest
 
 ## architecture
 

@@ -6,11 +6,16 @@ use crate::ast::*;
 
 pub fn check(context: Context, expression: Expression, target: Type) -> Result<(), (&'static str, Context, Type)> {
     match expression {
-        Expression::Annotation { expr, kind } => Err(("attempting to typecheck an annotation", context, target)),
+        // Expression::Annotation { expr, kind } => Err(("attempting to typecheck an annotation", context, target)),
+        Expression::Annotation { expr, kind } => match infer(context.clone(), Expression::Annotation { expr, kind })? == target {
+            true => Ok(()),
+            false => Err(("inferred type from annotation does not match target", context, target))
+        },
         // Bt-CheckInfer
         Expression::Constant { term } => match term.kind == target {
             true => Ok(()),
-            false => Err(("constant is of wrong type", context, target))
+            false => Ok(()) // all our constants are Empty for now
+            // false => Err(("constant is of wrong type", context, target))
         },
         // Bt-CheckInfer
         // in the future: extend to closures? nah probably not
@@ -28,7 +33,11 @@ pub fn check(context: Context, expression: Expression, target: Type) -> Result<(
             },
             _ => Err(("attempting to check an abstraction with a non-function type", context, target))
         },
-        Expression::Application { func, arg } => Err(("attempting to check an application", context, target)),
+        // Expression::Application { func, arg } => Err(("attempting to check an application", context, target)),
+        Expression::Application { func, arg } => match infer(context.clone(), Expression::Application { func, arg })? == target {
+            true => Ok(()),
+            false => Err(("inferred type does not match target", context, target))
+        },
         // T-If
         Expression::Conditional { if_cond, if_then, if_else } => {
             check(context.clone(), *if_cond, Type::Boolean)?;
