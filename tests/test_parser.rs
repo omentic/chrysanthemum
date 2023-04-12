@@ -52,47 +52,56 @@ fn test_complex_annotations() {
 }
 
 const program: &'static str =
-"func foo() =
-  bar
-  if this:
+"func foo(x): (int -> int) =
+  if this =
     that
-  else:
+  else =
     this
 
 hello
 foo
 bar
 baz
-func foo =
+func foo: (bool -> int) =
   this
-  if that:
-    then this
 ";
 
 const lexed: &'static str =
-"func foo() = {
-  bar;
-  if this: {
+"func foo(x): (int -> int) = {
+  if this = {
     that;
-  }
-  else: {
+  };
+  else = {
     this;
-  }
-}
+  };
+};
 hello;
 foo;
 bar;
 baz;
-func foo = {
+func foo: (bool -> int) = {
   this;
-  if that: {
-    then this;
-  }
-}";
+};";
 
 #[test]
 fn test_lexer() {
     let result = lex(program);
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), lexed);
+}
+
+#[test]
+fn test_parser() {
+    let result = parse_lang(lexed);
+    assert!(result.is_err());
+
+    let file = std::fs::read_to_string("tests/src/negate.nim");
+    assert!(file.is_ok());
+    let result = parse_lang(&file.unwrap());
+    assert!(result.is_err());
+
+    let file = std::fs::read_to_string("tests/src/fib.nim");
+    assert!(file.is_ok());
+    let result = parse_lang(&file.unwrap());
+    assert!(result.is_err());
 }

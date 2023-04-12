@@ -173,6 +173,7 @@ pub fn lex(input: &str) -> Result<String, &'static str> {
                             result.push('\n');
                             result.push_str(&" ".repeat(state.level));
                             result.push('}');
+                            result.push(';');
                             state.previous = Previous::Block;
                         }
                         result.push('\n');
@@ -214,6 +215,7 @@ pub fn lex(input: &str) -> Result<String, &'static str> {
         result.push('\n');
         result.push_str(&" ".repeat(state.level));
         result.push('}');
+        result.push(';');
     }
     return Ok(result);
 }
@@ -240,26 +242,33 @@ pub fn parse_lang(input: &str) -> Result<Vec<Expression>, peg::error::ParseError
                         } else {
                             value
                         },
-                        kind: Type::Empty
+                        kind: Type::Empty // fixme
                     }
                 }
             }
             // types
-            // still fucking awful
-            rule empty() -> Type = k:"empty" {Type::Empty}
-            rule unit() -> Type = k:"unit" {Type::Unit}
-            rule boolean() -> Type = k:"bool" {Type::Boolean}
-            rule natural() -> Type = k:"nat" {Type::Natural}
-            rule integer() -> Type = k:"int" {Type::Integer}
-            rule function() -> Type = f:kind() w() "->" w() t:kind() {
+            rule primitive() -> Type = k:$("empty" / "unit" / "bool" / "nat" / "int") {
+                match k {
+                    "empty" => Type::Empty,
+                    "unit" => Type::Unit,
+                    "bool" => Type::Boolean,
+                    "nat" => Type::Natural,
+                    "int" => Type::Integer,
+                    _ => Type::Empty // never happens
+                }
+            }
+            // fixme: parenthesis necessary, left-recursion issue
+            rule function() -> Type = "(" w()? f:kind() w()? "->" w()? t:kind() w()? ")" {
                 Type::Function { from: Box::new(f), to: Box::new(t) }
             }
+            // todo: records, etc
             rule kind() -> Type
-             = k:(empty() / unit() / boolean() / natural() / integer()) {
+             = k:(function() / primitive()) {
                 k
             }
+            // fixme: cannot say e:(expr()), left-recursion issue
             rule ann() -> Expression
-            = e:(cond() / abs() / app() / cons() / var()) w() ":" w() k:kind() {
+            = e:(cond() / abs() / app() / cons() / var()) w()? ":" w() k:kind() {
                 Expression::Annotation {
                     expr: Box::new(e),
                     kind: k
@@ -271,8 +280,9 @@ pub fn parse_lang(input: &str) -> Result<Vec<Expression>, peg::error::ParseError
                     id: v
                 }
             }
+            // todo: multiple parameters pls
             rule abs() -> Expression
-            = "func" "(" p:ident() ")" w() k:function() w() "=" w() "{" f:expr() "}" {
+            = "func" w() n:ident() w()? "(" p:ident() ")" w()? ":" w()? k:function() w() "=" w() "{" w() f:expr() w() "}" {
                 Expression::Annotation {
                     expr: Box::new(Expression::Abstraction { param: p, func: Box::new(f) }),
                     kind: k
@@ -287,7 +297,7 @@ pub fn parse_lang(input: &str) -> Result<Vec<Expression>, peg::error::ParseError
                 }
             }
             rule cond() -> Expression
-            = "if" w() c:expr() w() ":" w() "{" w() t:expr() w() "}" w() "else:" w() "{" w() e:expr() w() "}" {
+            = "if" w() c:expr() w() "=" w() "{" w() t:expr() w() "};" w() "else" w() "=" w() "{" w() e:expr() w() "}" {
                 Expression::Conditional {
                     if_cond: Box::new(c),
                     if_then: Box::new(t),
@@ -295,11 +305,11 @@ pub fn parse_lang(input: &str) -> Result<Vec<Expression>, peg::error::ParseError
                 }
             }
             pub rule expr() -> Expression
-            = w()? e:(cond()) w()? {
+            = e:(ann() / cond() / abs() / app() / cons() / var()) ";" {
                 e
             }
             pub rule file() -> Vec<Expression>
-            = expr() ++ w()
+            = expr() ++ "\n"
         }
     }
     return puck::file(input);
