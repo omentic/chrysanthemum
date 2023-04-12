@@ -6,7 +6,7 @@ use chrysanthemum::util::*;
 
 #[test]
 fn test_simple_phrases() {
-    assert_eq!(parse_lambda("123"), Ok(Const(123, Type::Empty)));
+    assert_eq!(parse_lambda("123"), Ok(Const(123)));
     assert_eq!(parse_lambda("x12"), Ok(Var("x12")));
     assert_eq!(parse_lambda("x12x2"), Ok(Var("x12x2")));
     // so i _don't_ want these to be valid identifiers:
@@ -17,8 +17,8 @@ fn test_simple_phrases() {
 
 #[test]
 fn test_simple_annotations() {
-    assert_eq!(parse_lambda("t: int"), Ok(Ann(Var("t"), Type::Integer)));
-    assert_eq!(parse_lambda("12: nat"), Ok(Ann(Const(12, Type::Empty), Type::Natural)));
+    assert_eq!(parse_lambda("t: int"), Ok(Ann(Var("t"), Int)));
+    assert_eq!(parse_lambda("12: nat"), Ok(Ann(Const(12), Nat)));
     assert!(parse_lambda("t: fake").is_err());
 }
 
@@ -33,22 +33,22 @@ fn test_simple_expressions() {
     assert_eq!(parse_lambda("(λx.y) x"), Ok(App(Abs("x", Var("y")), Var("x"))));
     assert_eq!(parse_lambda("if x then y else z"), Ok(Cond(Var("x"), Var("y"), Var("z"))));
     assert_eq!(parse_lambda("if xeme then yak else zebra"), Ok(Cond(Var("xeme"), Var("yak"), Var("zebra"))));
-    assert_eq!(parse_lambda("if 413 then 612 else 1025"), Ok(Cond(Const(413, Type::Empty), Const(612, Type::Empty), Const(1025, Type::Empty)))); // invalid, but should parse
+    assert_eq!(parse_lambda("if 413 then 612 else 1025"), Ok(Cond(Const(413), Const(612), Const(1025)))); // invalid, but should parse
 }
 
 #[test]
 fn test_complex_expressions() {
-    assert_eq!(parse_lambda("(λy.if y then 0 else 1) z"), Ok(App(Abs("y", Cond(Var("y"), Const(0, Type::Empty), Const(1, Type::Empty))), Var("z"))));
+    assert_eq!(parse_lambda("(λy.if y then 0 else 1) z"), Ok(App(Abs("y", Cond(Var("y"), Const(0), Const(1))), Var("z"))));
 }
 
 #[test]
 fn test_complex_annotations() {
-    assert_eq!(parse_lambda("(lambda x . y)  : int"), Ok(Ann(Abs("x", Var("y")), Type::Integer)));
-    assert_eq!(parse_lambda("((lambda x. y): (int -> int)) 413: int"), Ok(App(Ann(Abs("x", Var("y")), Type::Function { from: Box::new(Type::Integer), to: Box::new(Type::Integer) }), Ann(Const(413, Type::Empty), Type::Integer))));
-    assert_eq!(parse_lambda("if 0: bool then 1: bool else 2: int"), Ok(Cond(Ann(Const(0, Type::Empty), Type::Boolean), Ann(Const(1, Type::Empty), Type::Boolean), Ann(Const(2, Type::Empty), Type::Integer))));
-    assert_eq!(parse_lambda("(lambda x. if x then 1: bool else 0: bool): (int -> bool)"), Ok(Ann(Abs("x", Cond(Var("x"), Ann(Const(1, Type::Empty), Type::Boolean), Ann(Const(0, Type::Empty), Type::Boolean))), Type::Function { from: Box::new(Type::Integer), to: Box::new(Type::Boolean) })));
-    assert_eq!(parse_lambda("(lambda x. if x then 1: int else 0: int): (bool -> int)"), Ok(Ann(Abs("x", Cond(Var("x"), Ann(Const(1, Type::Empty), Type::Integer), Ann(Const(0, Type::Empty), Type::Integer))), Type::Function { from: Box::new(Type::Boolean), to: Box::new(Type::Integer) })));
-    assert_eq!(parse_lambda("(lambda x. if x then 0 else 1): (bool -> bool)"), Ok(Ann(Abs("x", Cond(Var("x"), Const(0, Type::Empty), Const(1, Type::Empty))), Type::Function { from: Box::new(Type::Boolean), to: Box::new(Type::Boolean) })));
+    assert_eq!(parse_lambda("(lambda x . y)  : int"), Ok(Ann(Abs("x", Var("y")), Int)));
+    assert_eq!(parse_lambda("((lambda x. y): (int -> int)) 413: int"), Ok(App(Ann(Abs("x", Var("y")), Func(Int, Int) ), Ann(Const(413), Int))));
+    assert_eq!(parse_lambda("if 0: bool then 1: bool else 2: int"), Ok(Cond(Ann(Const(0), Bool), Ann(Const(1), Bool), Ann(Const(2), Int))));
+    assert_eq!(parse_lambda("(lambda x. if x then 1: bool else 0: bool): (int -> bool)"), Ok(Ann(Abs("x", Cond(Var("x"), Ann(Const(1), Bool), Ann(Const(0), Bool))), Func(Int, Bool))));
+    assert_eq!(parse_lambda("(lambda x. if x then 1: int else 0: int): (bool -> int)"), Ok(Ann(Abs("x", Cond(Var("x"), Ann(Const(1), Int), Ann(Const(0), Int))), Func(Bool, Int))));
+    assert_eq!(parse_lambda("(lambda x. if x then 0 else 1): (bool -> bool)"), Ok(Ann(Abs("x", Cond(Var("x"), Const(0), Const(1))), Func(Bool, Bool))));
 }
 
 const program: &'static str =

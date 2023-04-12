@@ -24,9 +24,9 @@ pub fn Ann(expr: Expression, kind: Type) -> Expression {
     };
 }
 
-pub fn Const(val: Value, kind: Type) -> Expression {
+pub fn Const(val: Value) -> Expression {
     return Expression::Constant {
-        term: Term {val, kind}
+        term: Term {val, kind: Type::Empty}
     };
 }
 
@@ -58,3 +58,15 @@ pub fn Cond(if_cond: Expression, if_then: Expression, if_else: Expression) -> Ex
     };
 }
 
+pub fn Func(from: Type, to: Type) -> Type {
+    return Type::Function {
+        from: Box::new(from),
+        to: Box::new(to)
+    }
+}
+
+pub const Empty: Type = Type::Empty;
+pub const Unit: Type = Type::Unit;
+pub const Bool: Type = Type::Boolean;
+pub const Nat: Type = Type::Natural;
+pub const Int: Type = Type::Integer;
