@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+	<html class="sl-root decks export offline loaded">
+	<head>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+		<title>chrysanthemum</title>
+
+
+		<link rel="stylesheet" type="text/css" href="lib/offline-v2.css">
+
+
+
+	</head>
+	<body class="reveal-viewport theme-font-montserrat theme-color-white-blue">
+		<div class="reveal">
+			<div class="slides">
+				<section data-id="a4661b2bbd4624c846921874ba673364"><div class="sl-block" data-block-type="text" style="width: 806px; left: 78px; top: 238px; height: auto;" data-block-id="791c2b40c03699f6fde69d16c2186a3f"><div class="sl-block-content" data-placeholder-tag="h1" data-placeholder-text="Title Text" style="z-index: 10;">
+<h1><s>typeclasses</s></h1>
+
+<p><s>also</s> bidirectional typechecking and subtyping</p>
+</div></div>
+<div class="sl-block" data-block-type="text" style="height: auto; width: 600px; left: 180px; top: 509.5px;" data-name="text-2840e2" data-block-id="67d13465aa6485a5c990f43539cf415f"><div class="sl-block-content" data-placeholder-tag="p" data-placeholder-text="Text" style="z-index: 11;"><p>ten slides, five minutes</p></div></div></section><section data-id="b3131b7538da110564ed88c19f88f798"><div class="sl-block" data-block-type="text" style="width: 420px; left: 29px; top: 84px; height: auto;" data-block-id="ae6fb9a98dfec970cd7c79e600eb5fe8"><div class="sl-block-content" data-placeholder-tag="h2" data-placeholder-text="Title Text" style="text-align: left; z-index: 11;"><h3>the lambda calculus</h3></div></div>
+<div class="sl-block" data-block-type="text" style="width: 428px; left: 29px; top: 175px; height: auto;" data-block-id="7838a236af12095f9c2f16dcf852100a"><div class="sl-block-content" data-placeholder-tag="p" data-placeholder-text="Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi nec metus justo. Aliquam erat volutpat." style="z-index: 13; text-align: left; line-height: 1.625;" data-has-line-height=""><ul>
+	<li><span style="font-size:0.9em">no time, others also did this</span></li>
+	<li><span style="font-size:0.9em">rust good bottom text</span></li>
+	<li><span style="font-size:27px">algebraic data types &lt;&lt;3</span></li>
+	<li><span style="font-size:0.9em">bidirectional typechecking</span></li>
+	<li><span style="font-size:0.9em"><strong>infer</strong>, <strong>check</strong>, <strong>execute</strong></span></li>
+	<li><span style="font-size:0.9em">bounce back and forth between infer and check</span></li>
+	<li><span style="font-size:0.9em">scaling, first class functions:   a problem for the future</span></li>
+</ul></div></div>
+<div class="sl-block" data-block-type="code" style="width: 451px; height: 630px; left: 480px; top: 35px;" data-name="code-78376e" data-block-id="0241b4282f3a776e15a9e530e6d4d173"><div class="sl-block-content notranslate" data-highlight-theme="ascetic" data-code-frame="none" style="z-index: 10; border-style: solid; border-width: 1px;" data-code-wrap="true"><pre class="ocaml" style="font-size: 14px; line-height: 17px;"><code data-line-numbers="">pub type Value = u8;
+
+pub struct Term {
+  pub val: Value,
+  pub kind: Type, // for casting
+}
+
+pub type Identifier = String;
+pub type Context = HashMap&lt;Identifier, Term&gt;;
+
+#[derive(Clone, PartialEq, Eq)]
+pub enum Expression {
+  Annotation {
+    expr: Box&lt;Expression&gt;, 
+    kind: Type
+  },
+  Constant {
+    term: Term
+  },
+  Variable {
+    id: Identifier
+  },
+  Abstraction {
+    param: Identifier, 
+    func: Box&lt;Expression&gt;
+  },
+  Application {
+    func: Box&lt;Expression&gt;, 
+    arg: Box&lt;Expression&gt;
+  },
+  Conditional {
+    if_cond: Box&lt;Expression&gt;, 
+    if_then: Box&lt;Expression&gt;, 
+    if_else: Box&lt;Expression&gt;
+  }
+}
+</code></pre></div></div></section><section class="stack" data-id="415287af0ae5feeb1d12a5d12ae5bdee"><section data-id="3d62bb80cc8ceab908cb8c9e8e38e89d"><div class="sl-block" data-block-type="text" style="width: 400px; left: 520px; top: 367px; height: auto;" data-block-id="7c5a36cb564fd5c7b314f0fe46b96e18"><div class="sl-block-content" data-placeholder-tag="h2" data-placeholder-text="Title Text" style="z-index: 11; text-align: center; background-color: rgb(255, 255, 255); border-style: solid; border-width: 1px; padding: 10px; --darkreader-inline-bgcolor:#181a1b;" data-darkreader-inline-bgcolor="">
+<h2>parsing</h2>
+
+<p>pegs are magic</p>
+
+<p>very nice for simple stuff</p>
+</div></div>
+
+<div class="sl-block" data-block-type="code" style="width: 960px; height: 700px; left: 0px; top: 0px;" data-name="code-18c030" data-block-id="fbbb08031772ba21433337c8b6216bbd"><div class="sl-block-content notranslate" data-highlight-theme="xcode" data-code-frame="none" style="z-index: 10; border-style: solid; border-width: 1px;" data-code-wrap="true"><pre class="rust" style="font-size: 16px; line-height: 19px;"><code data-line-numbers="">/// Parses a lambda-calculus-like language into an AST.
+pub fn parse_str(input: &amp;str) -&gt; Result&lt;Expression, peg::error::ParseError&lt;peg::str::LineCol&gt;&gt;{
+    // this is kinda gross
+    // i miss my nim pegs
+    peg::parser!{
+        grammar lambda() for str {
+            rule identifier() -&gt; String
+            = i:['a'..='z' | 'A'..='Z' | '0'..='9']+ {
+                i.iter().collect::&lt;String&gt;()
+            }
+            rule constant() -&gt; Expression
+            = p:"-"? c:['0'..='9']+ {
+                let value = c.iter().collect::&lt;String&gt;().parse::&lt;Value&gt;().unwrap();
+                Expression::Constant {
+                    term: Term {
+                        val: if let Some(_) = p {
+                            value.wrapping_neg()
+                        } else {
+                            value
+                        },
+                        kind: Type::Empty
+                    }
+                }
+            }
+            rule primitive() -&gt; Type
+            = k:$("empty" / "unit" / "bool" / "nat" / "int") {
+                match k {
+                    "empty" =&gt; Type::Empty,
+                    "unit" =&gt; Type::Unit,
+                    "bool" =&gt; Type::Boolean,
+                    "nat" =&gt; Type::Natural,
+                    "int" =&gt; Type::Integer,
+                    _ =&gt; Type::Empty
+                }
+            }
+            rule function() -&gt; Type = "(" f:kind() " "* "-&gt;" " "* t:kind() ")" {
+                Type::Function { from: Box::new(f), to: Box::new(t) }
+            }
+            rule kind() -&gt; Type
+             = k:(function() / primitive()) {
+                k
+            }
+            rule annotation() -&gt; Expression
+            = e:(conditional() / abstraction() / application() / constant() / variable()) " "* ":" " "* k:kind() {
+                Expression::Annotation {
+                    expr: Box::new(e),
+                    kind: k
+                }
+            }
+            rule variable() -&gt; Expression
+            = v:identifier() {
+                Expression::Variable {
+                    id: v
+                }
+            }
+            rule abstraction() -&gt; Expression
+            = ("λ" / "lambda") " "* p:identifier() " "* "." " "* f:expression() {
+                Expression::Abstraction {
+                    param: p,
+                    func: Box::new(f)
+                }
+            }
+            rule application() -&gt; Expression
+            = "(" f:(annotation() / abstraction()) ")" " "* a:expression() {
+                Expression::Application {
+                    func: Box::new(f),
+                    arg: Box::new(a)
+                }
+            }
+            rule conditional() -&gt; Expression
+            = "if" " "+ c:expression() " "+ "then" " "+ t:expression() " "+ "else" " "+ e:expression() {
+                Expression::Conditional {
+                    if_cond: Box::new(c),
+                    if_then: Box::new(t),
+                    if_else: Box::new(e)
+                }
+            }
+            pub rule expression() -&gt; Expression
+            = e:(conditional() / annotation() / abstraction() / application() / constant() / variable()) {
+                e
+            }
+            pub rule ast() -&gt; Vec&lt;Expression&gt;
+            = expression() ** ("\n"+)
+        }
+    }
+    return lambda::expression(input.trim());
+}</code></pre></div></div></section><section data-id="b571280a25332e373ef4c198d796bf9e"><div class="sl-block" data-block-type="text" style="width: 400px; left: 520px; top: 396px; height: auto;" data-block-id="4304ebe755544fa0129f72a9b727e2eb"><div class="sl-block-content" data-placeholder-tag="h2" data-placeholder-text="Title Text" style="z-index: 11; text-align: center; background-color: rgb(255, 255, 255); border-style: solid; border-width: 1px; padding: 10px; --darkreader-inline-bgcolor:#181a1b;" data-darkreader-inline-bgcolor="">
+<h2>oh god</h2>
+<p>why did i decide to do this<br></p>
+</div></div>
+
+<div class="sl-block" data-block-type="code" style="width: 960px; height: 700px; left: 0px; top: 0px;" data-name="code-18c030" data-block-id="a053327817730688c30270bd7790eaec"><div class="sl-block-content notranslate" data-highlight-theme="xcode" data-code-frame="none" style="z-index: 10; border-style: solid; border-width: 1px;" data-code-wrap="true"><pre class="rust" style="font-size: 16px; line-height: 19px;"><code data-line-numbers="">/// Parses a simple language with bracket-based indentation and end-of-term semicolons.
+#[allow(unused_variables)]
+pub fn parse_lang(input: &amp;str) -&gt; Result&lt;Vec&lt;Expression&gt;, peg::error::ParseError&lt;peg::str::LineCol&gt;&gt; {
+  peg::parser! {
+    grammar puck() for str {
+      // whitespace
+      rule w() = ("\n" / " ")+
+      // todo: multiple parameters pls
+      rule abs() -&gt; Expression
+      = "func" w() n:ident() w()? "(" p:ident() ")"
+        w()? ":" w()? k:function() w() "=" w() "{" w() f:expr() w() "}" {
+        Expression::Annotation {
+          expr: Box::new(Expression::Abstraction { param: p, func: Box::new(f) }),
+          kind: k
+        }
+      }
+      // fixme: this requires, uh, refactoring the ast...
+      rule app() -&gt; Expression
+      = f:ident() "(" a:expr() ")" {
+        Expression::Application {
+          func: Box::new(Expression::Variable { 
+            id: f 
+          }),
+          arg: Box::new(a)
+        }
+      }
+      rule cond() -&gt; Expression
+      = "if" w() c:expr() w() "=" w() "{" w() t:expr() w() "};" w() 
+        "else" w() "=" w() "{" w() e:expr() w() "}" {
+        Expression::Conditional {
+          if_cond: Box::new(c),
+          if_then: Box::new(t),
+          if_else: Box::new(e)
+        }
+      }
+      // fixme: cannot say e:(expr()), left-recursion issue
+      rule ann() -&gt; Expression
+      = e:(cond() / abs() / app() / cons() / var()) w()? ":" w() k:kind() {
+        Expression::Annotation {
+          expr: Box::new(e),
+          kind: k
+        }
+      }
+      // identifiers
+      rule ident() -&gt; String = i:['a'..='z' | 'A'..='Z' | '0'..='9']+ {
+        i.iter().collect::&lt;String&gt;()
+      }
+      rule var() -&gt; Expression
+      = v:ident() {
+        Expression::Variable {
+          id: v
+        }
+      }
+      // constants
+      rule cons() -&gt; Expression = p:"-"? c:['0'..='9']+ {
+        let value = c.iter().collect::&lt;String&gt;().parse::&lt;Value&gt;().unwrap();
+        Expression::Constant {
+          term: Term {
+            val: if let Some(_) = p {
+              value.wrapping_neg()
+            } else {
+              value
+            },
+            kind: Type::Empty // fixme
+          }
+        }
+      }
+      // types
+      rule primitive() -&gt; Type = k:$("empty" / "unit" / "bool" / "nat" / "int") {
+        match k {
+          "empty" =&gt; Type::Empty,
+          "unit" =&gt; Type::Unit,
+          "bool" =&gt; Type::Boolean,
+          "nat" =&gt; Type::Natural,
+          "int" =&gt; Type::Integer,
+          _ =&gt; Type::Empty // never happens
+        }
+      }
+      // fixme: parenthesis necessary, left-recursion issue
+      rule function() -&gt; Type = "(" w()? f:kind() w()? "-&gt;" w()? t:kind() w()? ")" {
+        Type::Function { from: Box::new(f), to: Box::new(t) }
+      }
+      // todo: records, etc
+      rule kind() -&gt; Type
+       = k:(function() / primitive()) {
+        k
+      }
+      pub rule expr() -&gt; Expression
+      = e:(ann() / cond() / abs() / app() / cons() / var()) ";" {
+        e
+      }
+      pub rule file() -&gt; Vec&lt;Expression&gt;
+      = expr() ++ "\n"
+    }
+  }
+  return puck::file(input);
+}
+</code></pre></div></div></section><section data-id="5b7407362576e3330ce5a041db94c4f6"><div class="sl-block" data-block-type="code" style="width: 372px; height: 315px; left: 28px; top: 350px;" data-name="code-fec34b" data-block-id="0465bb1bf164ad420888c724cd3d6956">
+    <div class="sl-block-content notranslate" data-highlight-theme="ascetic" data-code-frame="none" style="z-index: 11; border-style: solid; border-width: 1px;" data-code-wrap="true">
+        <pre class="nim" style="font-size: 16px; line-height: 19px;"><code data-line-numbers="">func negate(x): (bool -&gt; bool) =
+  if x: 0
+  else: 1
+
+func fib(x): (int -&gt; int) =
+  if eq(x, 0):
+    0
+  else:
+    if eq(x, 1):
+      1
+    else:       # comment
+      add(fib(sub(x, 1)), 
+          fib(sub(x, 2)))
+
+negate(negate(1))
+fib(5)
+</code></pre>
+    </div>
+</div>
+<div class="sl-block" data-block-type="code" style="width: 511px; height: 630px; left: 434.5px; top: 35px;" data-block-id="6a738ee3f5ae23601928ee4c798bf6f2" data-name="code-729f31">
+    <div class="sl-block-content notranslate" data-highlight-theme="ascetic" data-code-frame="none" style="z-index: 10; border-style: solid; border-width: 1px;" data-code-wrap="true">
+        <pre class="none" style="font-size: 16px; line-height: 19px;"><code data-line-numbers="">/// Converts a whitespace-indented language 
+/// into a bracketed language for PEG matching.
+pub fn lex(input: &amp;str) -&gt; 
+    Result&lt;String, &amp;'static str&gt; {
+  #[derive(Eq, PartialEq)]
+  enum Previous {
+    Start,
+    Block,
+    Line,
+  }
+  struct State {
+    blank: bool, // entirely whitespace so far?
+    level: usize, // current indentation level
+    count: usize, // current whitespace count
+    previous: Previous,
+    comment: bool // current line a comment?
+  }
+  let indent_size: usize = 2;
+
+  let mut state = State { 
+    blank: true, 
+    level: 0, 
+    count: 0, 
+    previous: Previous::Start, 
+    comment: false 
+  };
+  let mut buffer = String::new();
+  let mut result = String::new();
+
+  // wow lexers are hard
+  for c in input.chars() {
+    match c {
+      '\n' =&gt; {
+      if !buffer.is_empty() {
+        if state.count == state.level {
+          if state.previous != 
+            Previous::Start {
+            result.push(';');
+            result.push('\n');
+          }
+          state.previous = Previous::Line;
+        } else if state.level + indent_size
+               == state.count {
+          result.push(' ');
+          result.push('{');
+          result.push('\n');
+          state.level = state.count;
+          state.previous = Previous::Line;
+        } else if state.count &gt; 
+                  state.level + indent_size {
+          return Err("invalid indent jump");
+        } else if state.count % indent_size 
+                                       != 0 {
+          return Err("incorrect indent offset");
+        } else if state.level &gt; state.count {
+          while state.level &gt; state.count {
+            if state.previous == 
+               Previous::Line {
+              result.push(';');
+            }
+            state.level -= indent_size;
+            result.push('\n');
+            result.push_str(
+                   &amp;" ".repeat(state.level));
+            result.push('}');
+            result.push(';');
+            state.previous = Previous::Block;
+          }
+          result.push('\n');
+        } else {
+          return Err("unknown indentation");
+        }
+
+        result.push_str(
+               &amp;" ".repeat(state.count));
+        result.push_str(&amp;buffer);
+
+        state.count = 0;
+        state.comment = false;
+        buffer.clear();
+        }
+        state.blank = true;
+      },
+      ' ' if state.blank =&gt; {
+        state.count += 1;
+      },
+      '#' =&gt; {
+        state.blank = false;
+        state.comment = true;
+      },
+      _ =&gt; {
+        if state.blank {
+          state.blank = false;
+        }
+        if !state.comment {
+          buffer.push(c);
+        }
+      },
+    }
+  }
+  if state.previous == Previous::Line {
+    result.push(';');
+  }
+  while state.level != 0 {
+    state.level -= 2;
+    result.push('\n');
+    result.push_str(&amp;" ".repeat(state.level));
+    result.push('}');
+    result.push(';');
+  }
+  return Ok(result);
+}</code></pre>
+    </div>
+</div>
+<div class="sl-block" data-block-type="text" style="width: 384px; left: 28px; top: 106px; height: auto;" data-block-id="91eb6fbcf652855c2504b2ff23e1e2ce" data-name="text-a739f8">
+    <div class="sl-block-content" data-placeholder-tag="h2" data-placeholder-text="Title Text" style="text-align: left; z-index: 12;"><h3>don't write a parser</h3></div>
+</div>
+<div class="sl-block" data-block-type="text" style="width: 384px; left: 28px; top: 202px; height: auto;" data-block-id="b0c9d472583c05a21d1f5ee7082ba525" data-name="text-64290a">
+    <div class="sl-block-content" data-placeholder-tag="p" data-placeholder-text="Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin urna odio, aliquam vulputate faucibus id, elementum lobortis felis. Mauris urna dolor, placerat ac sagittis quis." style="text-align: left; z-index: 13;"><p>i now fully appreciate the role of lexers, whitespace and PEGs do <em>*not*</em> mix</p></div>
+</div></section></section><section class="stack" data-id="078cbf3544989234f99f58c5eaf385c4"><section data-id="a2ec09b9df8f881193e02b67d9d34a6f"><div class="sl-block" data-block-type="text" style="width: 864px; left: 39.5px; top: 66px; height: auto;" data-block-id="5c70c5419a4fffc36f326389f04919b1"><div class="sl-block-content" data-placeholder-tag="h2" data-placeholder-text="Title Text" style="text-align: left; z-index: 11;"><h2>subtyping</h2></div></div>
+<div class="sl-block" data-block-type="code" style="width: 881px; height: 508px; left: 39.5px; top: 160px;" data-name="code-b4c850" data-block-id="f43d7b497a44cc7a79f9799f8c957bc7"><div class="sl-block-content notranslate" data-highlight-theme="github-gist" data-code-frame="none" style="z-index: 10; border-style: solid; border-width: 1px;" data-code-wrap="true"><pre style="font-size: 16px; line-height: 19px;" class="cpp"><code data-line-numbers="">/// The subtyping relation between any two types.
+pub fn subtype(is: &amp;Type, of: &amp;Type) -&gt; bool {
+    match (is, of) {
+        (Type::Record(is_fields), Type::Record(of_fields)) =&gt; {
+            // width, depth, and permutation
+            for (key, of_value) in of_fields {
+                match is_fields.get(key) {
+                    Some(is_value) =&gt; if !subtype(is_value, of_value) {
+                        return false;
+                    },
+                    None =&gt; return false
+                }
+            }
+            return true;
+        },
+        (Type::Function { from: is_from, to: is_to }, 
+         Type::Function { from: of_from, to: of_to }) =&gt; {
+            subtype(of_from, is_from) &amp;&amp; subtype(is_to, of_to)
+        }
+        (Type::Natural, Type::Integer) =&gt; true, // obviously not, but let's pretend
+        (_, Type::Empty) =&gt; true,
+        (Type::Error, _) =&gt; true,
+        (_, _) if is == of =&gt; true,
+        (_, _) =&gt; false,
+    }
+}
+</code></pre></div></div></section><section data-id="185642af785c80a8e89f91ed87071041"><div class="sl-block" data-block-type="text" style="width: 413px; left: 29px; top: 84px; height: auto;" data-block-id="509cdb304125bcb536707476b3659024"><div class="sl-block-content" data-placeholder-tag="h2" data-placeholder-text="Title Text" style="text-align: left; z-index: 11;"><h3>advanced ish types</h3></div></div>
+<div class="sl-block" data-block-type="text" style="width: 413px; left: 29px; top: 165px; height: auto;" data-block-id="74b007d99173637ef45f94e4d8ee8230"><div class="sl-block-content" data-placeholder-tag="p" data-placeholder-text="Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi nec metus justo. Aliquam erat volutpat." style="z-index: 13; text-align: left; line-height: 1.625;" data-has-line-height=""><ul>
+	<li>function types</li>
+	<li>structs/records/products: three types for the price of one! <span style="font-size:0.5em">(note: remove this, this isn't funny)</span>
+</li>
+	<li>subtyping determined with a <strong>subtype</strong> function</li>
+	<li>drop-in replacement for type equality (<strong>==</strong>) in impl</li>
+	<li>if branches must be mutual subtypes</li>
+</ul></div></div>
+<div class="sl-block" data-block-type="code" style="width: 451px; height: 548.5px; left: 480px; top: 109.5px;" data-name="code-365804" data-block-id="6b0a245087a60ebd891520e52e03c50f"><div class="sl-block-content notranslate" data-highlight-theme="ascetic" data-code-frame="none" style="z-index: 10; border-style: solid; border-width: 1px;"><pre class="ocaml" style="font-size: 16px; line-height: 19px;"><code data-line-numbers="">pub type Identifier = String;
+pub type Context = 
+    HashMap&lt;Identifier, Term&gt;;
+
+pub type Value = u64;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Type {
+    Empty,  // top
+    Error,  // bottom
+    Unit,
+    Boolean,
+    Natural,
+    Integer,
+    // Float,
+    // String,
+    Enum(Vec&lt;Type&gt;),
+    Record(HashMap&lt;Identifier, Type&gt;),
+    Function{from: Box&lt;Type&gt;, 
+             to: Box&lt;Type&gt;
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Term {
+    pub val: Value,
+    pub kind: Type,
+}
+</code></pre></div></div></section></section><section data-id="395e68419b49e56ae2c9503f9349949b"><div class="sl-block" data-block-type="text" style="width: 864px; left: 30px; top: 58px; height: auto;" data-block-id="fca8471a1c5e254df842c59786968a72"><div class="sl-block-content" data-placeholder-tag="h1" style="font-size: 200%; text-align: left; z-index: 10;" data-placeholder-text="Text"><h2>future plans<br>
+</h2></div></div>
+<div class="sl-block" data-block-type="text" style="height: auto; width: 850px; left: 30px; top: 245px;" data-name="text-419f61" data-block-id="03c292be5839e649ed825dbb51b4ed96"><div class="sl-block-content" data-placeholder-tag="p" data-placeholder-text="Text" style="z-index: 11;"><ul>
+	<li>complete and test subtyping</li>
+	<li>extend system with additional higher-level types
+	<ul>
+		<li>enums</li>
+		<li>actually distinct naturals and integers</li>
+		<li>floats</li>
+		<li>strings (ugh), vecs, collections of data</li>
+	</ul>
+	</li>
+	<li>type classes (still really want to implement), needs:
+	<ul>
+		<li>a global context + first class functions</li>
+		<li>resolving functions via identifiers</li>
+	</ul>
+	</li>
+	<li>then, write another parser</li>
+</ul></div></div></section><section data-id="0d1b641e07aaf095303a30707be1be28"><div class="sl-block" data-block-type="text" style="width: 864px; left: 30px; top: 58px; height: auto;" data-block-id="7d75ef11e0b5935bc5066a155bf24992"><div class="sl-block-content" data-placeholder-tag="h1" style="font-size: 200%; text-align: left; z-index: 10;" data-placeholder-text="Text">
+<h1>Questions?<br>
+ </h1>
+
+<p>no</p>
+</div></div></section><section data-id="9c412ee29000e2ef5c0d519c9144e8ab"><div class="sl-block" data-block-type="text" style="width: 910px; left: 25px; top: 299.5px; height: auto;" data-block-id="ca2a2bc628d05d54fbc85e432d1d9f09"><div class="sl-block-content" data-placeholder-tag="p" data-placeholder-text="Text" style="z-index: 11; line-height: 2.6;" data-has-line-height=""><h3><a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank">https://github.com/j-james/chrysanthemum</a></h3></div></div></section>
+			</div>
+		</div>
+
+		<script>
+			var SLConfig = {"deck": {"id":2589406,"slug":"deck-b5df03","title":"chrysanthemum","description":"","width":960,"height":700,"margin":0.05,"visibility":"all","published_at":"2023-04-05T20:15:15.536Z","sanitize_messages":null,"thumbnail_url":"https://s3.amazonaws.com/media-p.slid.es/thumbnails/f2d3ed901c2da053195f3ef439c1d952/thumb.jpg?1681334587","view_count":0,"user":{"id":1342540,"username":"apropo","name":"","description":"","thumbnail_url":"https://media.slid.es/avatars/1342540/compass.jpg","account_type":"lite","team_id":null,"settings":{"id":5518179,"present_controls":true,"present_upsizing":true,"present_pointer":false,"present_notes":true,"default_deck_tag_id":null}},"background_transition":"slide","transition":"slide","theme_id":null,"theme_font":"montserrat","theme_color":"white-blue","auto_slide_interval":0,"comments_enabled":true,"forking_enabled":true,"rolling_links":false,"center":false,"shuffle":null,"should_loop":false,"share_notes":null,"slide_number":null,"slide_count":12,"rtl":false,"version":2,"collaborative":null,"deck_user_editor_limit":1,"data_updated_at":1681339064283,"font_typekit":null,"font_google":null,"time_limit":null,"navigation_mode":"default","upsizing_enabled":null,"notes":{}}};
+
+
+			// Use local fonts
+			SLConfig.fonts_url = 'lib/fonts/';
+		</script>
+
+		<script src="lib/reveal.js"></script>
+		<script src="lib/reveal-plugins.js"></script>
+		<script src="lib/offline.js"></script>
+
+		<!-- Initialize the presentation -->
+		<script>
+			Reveal.initialize({
+				width: 960,
+				height: 700,
+				margin: 0.05,
+				
+
+				hash: true,
+				controls: true,
+				progress: true,
+				mouseWheel: false,
+				showNotes: false,
+				slideNumber: false,
+				fragmentInURL: true,
+
+				autoSlide: 0,
+				autoSlideStoppable: true,
+
+				autoAnimateMatcher: SL.deck.AutoAnimate.matcher,
+
+				center: false,
+				shuffle: false,
+				loop: false,
+				rtl: false,
+				navigationMode: "default",
+
+				transition: "slide",
+				backgroundTransition: "slide",
+
+				highlight: {
+					escapeHTML: false
+				},
+
+				plugins: [ RevealZoom, RevealNotes, RevealMarkdown, RevealHighlight ]
+			});
+		</script>
+
+		
+
+	</body>
+</html>
