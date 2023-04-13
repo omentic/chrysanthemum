@@ -2,6 +2,8 @@ use std::io::{Write, stdout, stdin};
 
 use chrysanthemum::*;
 use chrysanthemum::ast::*;
+use chrysanthemum::bidirectional::*;
+use chrysanthemum::simple::*;
 
 fn main() {
     println!("chrysanthemum");
@@ -22,7 +24,7 @@ fn main() {
 
                 input.clear();
                 stdin().read_line(&mut input).unwrap();
-                match simple::infer(&empty_context, parser::parse_lambda(&input).unwrap()) {
+                match infer(&empty_context, parser::parse_lambda(&input).unwrap()) {
                     Ok(kind) => println!("infers! {}", kind),
                     Err(e) => println!("{:?}", e),
                 }
@@ -34,10 +36,10 @@ fn main() {
 
                 input.clear();
                 stdin().read_line(&mut input).unwrap();
-                let kind = simple::infer(&empty_context, parser::parse(&input));
+                let kind = infer(&empty_context, parser::parse_lambda(&input).unwrap());
                 match kind {
                     Ok(kind) => {
-                        match simple::check(&empty_context, parser::parse_lambda(&input).unwrap(), &kind) {
+                        match check(&empty_context, parser::parse_lambda(&input).unwrap(), &kind) {
                             Ok(_) => println!("checks!"),
                             Err(e) => println!("{:?}", e),
                         }
@@ -52,7 +54,7 @@ fn main() {
 
                 input.clear();
                 stdin().read_line(&mut input).unwrap();
-                match simple::execute(&empty_context, parser::parse_lambda(&input).unwrap()) {
+                match execute(&empty_context, parser::parse_lambda(&input).unwrap()) {
                     Ok(term) => println!("{}", term),
                     Err(e) => println!("{:?}", e)
                 }

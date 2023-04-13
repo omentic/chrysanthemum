@@ -119,3 +119,58 @@ impl fmt::Display for Term {
 //         return Ok(());
 //     }
 // }
+
+/// Convert a term into its corresponding type.
+pub fn convert(term: &Term) -> Result<Type, String> {
+    match term {
+        Term::Unit() => Ok(Type::Unit),
+        Term::Boolean(_) => Ok(Type::Boolean),
+        Term::Natural(_) => Ok(Type::Natural),
+        Term::Integer(_) => Ok(Type::Integer),
+        Term::Float(_) => Ok(Type::Float),
+        Term::String { len, cap, data } => Ok(Type::String),
+        Term::Enum { val, data } => data.get(*val)
+            .ok_or_else(|| "enum value out of range!".to_string()).cloned(),
+        Term::Record(data) => {
+            let mut result = HashMap::new();
+            for (key, val) in data {
+                result.insert(key.clone(), convert(val)?);
+            }
+            return Ok(Type::Record(result));
+        },
+        Term::Function(func) => match *func.clone() {
+            Expression::Annotation { expr, kind } => match kind {
+                Type::Function { from, to } => Ok(Type::Function { from, to }),
+                _ => Err("function term value not a function!".to_string())
+            }
+            _ => Err("function term value does not have an annotation!".to_string())
+        }
+    }
+}
+
+/// Get the default value of a type. Throws an error if it doesn't exist.
+pub fn default(kind: &Type) -> Result<Term, String> {
+    match kind {
+        Type::Empty => Err("attempting to take the default term for empty".to_string()),
+        Type::Error => Err("attempting to take the default term for error".to_string()),
+        Type::Unit => Ok(Term::Unit()),
+        Type::Boolean => Ok(Term::Boolean(false)),
+        Type::Natural => Ok(Term::Natural(0)),
+        Type::Integer => Ok(Term::Integer(0)),
+        Type::Float => Ok(Term::Float(0.0)),
+        Type::String => Ok(Term::String { len: 0, cap: 0, data: vec!()}),
+        Type::Enum(data) => match data.len() {
+            0 => Err("attempting to get a default term of an enum with no variants!".to_string()),
+            _ => Ok(Term::Enum { val: 0, data: data.clone() })
+        },
+        Type::Record(data) => {
+            let mut result = HashMap::new();
+            for (key, val) in data {
+                result.insert(key.clone(), default(&val)?);
+            }
+            return Ok(Term::Record(result));
+        },
+        Type::Function { from, to } =>
+            Err("attempting to take the default term of a function type".to_string()),
+    }
+}

@@ -1,8 +1,8 @@
 #![allow(non_upper_case_globals)]
 
 use chrysanthemum::ast::*;
+use chrysanthemum::bidirectional::*;
 use chrysanthemum::parser::*;
-use chrysanthemum::simple::*;
 use chrysanthemum::util::*;
 
 // rust you KNOW these are &'static strs
