@@ -1,3 +1,5 @@
+#![allow(unused_variables)]
+
 pub mod ast;
 // pub mod classes;
 // pub mod effects;

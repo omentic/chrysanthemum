@@ -6,7 +6,7 @@ pub fn parse(input: &str) -> Expression {
         Ok(expr) => return expr,
         Err(e) => println!("invalid expression! {:?}", e)
     }
-    return Expression::Constant { term: Term { val: 0, kind: Type::Empty } };
+    return Expression::Constant { term: Term::Unit() };
 }
 
 /// Parses a Nim-like language into an AST.
@@ -35,15 +35,12 @@ pub fn parse_lambda(input: &str) -> Result<Expression, peg::error::ParseError<pe
             }
             rule cons() -> Expression
             = p:"-"? c:['0'..='9']+ {
-                let value = c.iter().collect::<String>().parse::<Value>().unwrap();
+                let value = c.iter().collect::<String>().parse::<usize>().unwrap();
                 Expression::Constant {
-                    term: Term {
-                        val: if let Some(_) = p {
-                            value.wrapping_neg()
-                        } else {
-                            value
-                        },
-                        kind: Type::Empty
+                    term: if let Some(_) = p {
+                        Term::Integer(-1 * isize::try_from(value).unwrap())
+                    } else {
+                        Term::Natural(value)
                     }
                 }
             }
@@ -236,15 +233,12 @@ pub fn parse_lang(input: &str) -> Result<Vec<Expression>, peg::error::ParseError
             }
             // constants
             rule cons() -> Expression = p:"-"? c:['0'..='9']+ {
-                let value = c.iter().collect::<String>().parse::<Value>().unwrap();
+                let value = c.iter().collect::<String>().parse::<usize>().unwrap();
                 Expression::Constant {
-                    term: Term {
-                        val: if let Some(_) = p {
-                            value.wrapping_neg()
-                        } else {
-                            value
-                        },
-                        kind: Type::Empty // fixme
+                    term: if let Some(_) = p {
+                        Term::Integer(-1 * isize::try_from(value).unwrap())
+                    } else {
+                        Term::Natural(value)
                     }
                 }
             }

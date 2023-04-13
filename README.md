@@ -3,13 +3,13 @@
 ## todo
 
 - [x] the simple lambda calculus: implement `execute`
-- [x] to lose my sanity: implement `parse`
+- [x] to be fancy: implement `parse`
+- [x] to lose my sanity: implement `parse_file`
 - [x] bidirectional typechecking: implement `infer` and `check`
+- [x] extend to additional basic types: refactor `Term`
+- [ ] extend to complex types: implement `access`
 - [ ] simple effects: extend `ast`
 - [ ] type classes: implement `monomorphize`
-- [x] to be fancy: implement `parse_file`
-- [ ] extend to additional basic types: implement `cast`
-- [ ] extend to complex types
 - [x] testtesttest
 
 ## architecture

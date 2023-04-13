@@ -13,10 +13,6 @@ pub fn unique_ident(count: &mut u8) -> String {
     }
 }
 
-pub fn Term(val: Value, kind: Type) -> Term {
-    return Term {val, kind};
-}
-
 pub fn Ann(expr: Expression, kind: Type) -> Expression {
     return Expression::Annotation {
         expr: Box::new(expr),
@@ -24,10 +20,8 @@ pub fn Ann(expr: Expression, kind: Type) -> Expression {
     };
 }
 
-pub fn Const(val: Value) -> Expression {
-    return Expression::Constant {
-        term: Term {val, kind: Type::Empty}
-    };
+pub fn Const(term: Term) -> Expression {
+    return Expression::Constant { term };
 }
 
 pub fn Var(id: &str) -> Expression {

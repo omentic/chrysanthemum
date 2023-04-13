@@ -6,6 +6,7 @@ use chrysanthemum::ast::*;
 fn main() {
     println!("chrysanthemum");
     let mut input = String::new();
+    let empty_context = Context::new();
     loop {
         println!("infer, check, or execute? (i/c/e)");
         print!("\x1b[1m==> \x1b[22m");
@@ -21,8 +22,8 @@ fn main() {
 
                 input.clear();
                 stdin().read_line(&mut input).unwrap();
-                match simple::infer(Context::new(), parser::parse_lambda(&input).unwrap()) {
-                    Ok(term) => println!("infers! {:?}", term),
+                match simple::infer(&empty_context, parser::parse_lambda(&input).unwrap()) {
+                    Ok(kind) => println!("infers! {}", kind),
                     Err(e) => println!("{:?}", e),
                 }
             },
@@ -33,10 +34,10 @@ fn main() {
 
                 input.clear();
                 stdin().read_line(&mut input).unwrap();
-                let kind = simple::infer(Context::new(), parser::parse(&input));
+                let kind = simple::infer(&empty_context, parser::parse(&input));
                 match kind {
                     Ok(kind) => {
-                        match simple::check(Context::new(), parser::parse_lambda(&input).unwrap(), kind) {
+                        match simple::check(&empty_context, parser::parse_lambda(&input).unwrap(), &kind) {
                             Ok(_) => println!("checks!"),
                             Err(e) => println!("{:?}", e),
                         }
@@ -51,8 +52,8 @@ fn main() {
 
                 input.clear();
                 stdin().read_line(&mut input).unwrap();
-                match simple::execute(Context::new(), parser::parse_lambda(&input).unwrap()) {
-                    Ok(term) => println!("{:?}", term),
+                match simple::execute(&empty_context, parser::parse_lambda(&input).unwrap()) {
+                    Ok(term) => println!("{}", term),
                     Err(e) => println!("{:?}", e)
                 }
             },
