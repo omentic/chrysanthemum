@@ -6,8 +6,15 @@ version = 3
 name = "chrysanthemum"
 version = "0.1.0"
 dependencies = [
+ "multipeek",
  "peg",
 ]
+
+[[package]]
+name = "multipeek"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d6b1cf1c2ae7c8c3898cbf8354ee836bc7037e35592d3739a9901d53c97b6a2"
 
 [[package]]
 name = "peg"
