@@ -55,7 +55,7 @@ fn test_checking() {
     assert!(check(Context::new(), parse_lambda(incorrect_cond_abs).unwrap(), Error).is_err());
 
     // more fun
-    assert_eq!(check(Context::new(), parse_lambda(not_inferrable).unwrap(), Func(Bool, Func(Int, Func(Int, Int)))), Ok(()));
-    assert_eq!(check(Context::new(), parse_lambda(not_inferrable).unwrap(), Func(Bool, Func(Nat, Func(Nat, Nat)))), Ok(()));
-    assert_eq!(check(Context::new(), parse_lambda(not_inferrable).unwrap(), Func(Bool, Func(Unit, Func(Unit, Unit)))), Ok(()));
+    assert!(check(Context::new(), parse_lambda(not_inferrable).unwrap(), Func(Bool, Func(Int, Func(Int, Int)))).is_ok());
+    assert!(check(Context::new(), parse_lambda(not_inferrable).unwrap(), Func(Bool, Func(Nat, Func(Nat, Nat)))).is_ok());
+    assert!(check(Context::new(), parse_lambda(not_inferrable).unwrap(), Func(Bool, Func(Unit, Func(Unit, Unit)))).is_ok());
 }

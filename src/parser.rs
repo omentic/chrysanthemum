@@ -47,21 +47,23 @@ pub fn parse_lambda(input: &str) -> Result<Expression, peg::error::ParseError<pe
                     }
                 }
             }
-            // fucking awful but i don't know another way
-            // k:("empty" / "unit" / etc) returns ()
-            // and i can't seem to match and raise a parse error
-            // so ¯\_(ツ)_/¯
-            rule empty() -> Type = k:"empty" {Type::Empty}
-            rule unit() -> Type = k:"unit" {Type::Unit}
-            rule boolean() -> Type = k:"bool" {Type::Boolean}
-            rule natural() -> Type = k:"nat" {Type::Natural}
-            rule integer() -> Type = k:"int" {Type::Integer}
+            rule primitive() -> Type
+            = k:$("empty" / "unit" / "bool" / "nat" / "int") {
+                match k {
+                    "empty" => Type::Empty,
+                    "unit" => Type::Unit,
+                    "bool" => Type::Boolean,
+                    "nat" => Type::Natural,
+                    "int" => Type::Integer,
+                    _ => Type::Empty
+                }
+            }
             // fixme: brackets are necessary here
             rule function() -> Type = "(" f:kind() " "* "->" " "* t:kind() ")" {
                 Type::Function { from: Box::new(f), to: Box::new(t) }
             }
             rule kind() -> Type
-             = k:(function() / empty() / unit() / boolean() / natural() / integer()) {
+             = k:(function() / primitive()) {
                 k
             }
             rule ann() -> Expression
