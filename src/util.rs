@@ -66,6 +66,7 @@ pub fn Func(from: Type, to: Type) -> Type {
 }
 
 pub const Empty: Type = Type::Empty;
+pub const Error: Type = Type::Empty;
 pub const Unit: Type = Type::Unit;
 pub const Bool: Type = Type::Boolean;
 pub const Nat: Type = Type::Natural;

@@ -25,14 +25,15 @@ pub type Value = u64;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
     Empty,
+    Error,
     Unit,
     Boolean,
     Natural,
     Integer,
     // Float,
     // String,
-    // Enum(Vec<Type>),
-    // Record(Vec<Type>),
+    Enum(Vec<Type>),
+    Record(HashMap<Identifier, Type>),
     Function{from: Box<Type>, to: Box<Type>},
 }
 
