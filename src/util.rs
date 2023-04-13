@@ -65,3 +65,15 @@ pub const Unit: Type = Type::Unit;
 pub const Bool: Type = Type::Boolean;
 pub const Nat: Type = Type::Natural;
 pub const Int: Type = Type::Integer;
+
+pub fn Float(term: f32) -> Term {
+    return Term::Float(term)
+}
+
+pub fn Str(len: usize, cap: usize, data: Vec<usize>) -> Term {
+    return Term::String { len, cap, data }
+}
+
+pub fn Enum(val: usize, data: Vec<Type>) -> Term {
+    return Term::Enum { val, data }
+}

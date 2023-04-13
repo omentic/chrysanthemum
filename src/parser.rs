@@ -29,12 +29,17 @@ pub fn parse_lambda(input: &str) -> Result<Expression, peg::error::ParseError<pe
     // this is kinda awful, i miss my simple nim pegs
     peg::parser! {
         grammar lambda() for str {
-            rule ident() -> String
-            = i:['a'..='z' | 'A'..='Z' | '0'..='9']+ {
+            rule ident() -> String = i:['a'..='z' | 'A'..='Z' | '0'..='9']+ {
                 i.iter().collect::<String>()
             }
-            rule cons() -> Expression
-            = p:"-"? c:['0'..='9']+ {
+            rule bool() -> Expression = b:$("true" / "false") {
+                match b {
+                    "true" => Expression::Constant { term: Term::Boolean(true) },
+                    "false" => Expression::Constant { term: Term::Boolean(false) },
+                    _ => Expression::Constant { term: Term::Unit() }
+                }
+            }
+            rule num() -> Expression = p:"-"? c:['0'..='9']+ {
                 let value = c.iter().collect::<String>().parse::<usize>().unwrap();
                 Expression::Constant {
                     term: if let Some(_) = p {
@@ -44,6 +49,7 @@ pub fn parse_lambda(input: &str) -> Result<Expression, peg::error::ParseError<pe
                     }
                 }
             }
+            rule cons() -> Expression = c:(bool() / num())
             rule primitive() -> Type
             = k:$("empty" / "unit" / "bool" / "nat" / "int") {
                 match k {
