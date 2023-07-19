@@ -1,4 +1,4 @@
-// Bidirectional type checking, subtyping, and typeclasses
+// The abstract syntax tree. All supported types go here.
 
 use core::fmt;
 use std::collections::HashMap;
@@ -41,7 +41,7 @@ pub enum Term {
     Integer(isize),
     Float(f32),
     String{len: usize, cap: usize, data: Vec<usize>},
-    Enum{val: usize, data: Vec<Type>}, // is this right?
+    Enum{val: usize, data: Box<Term>}, // is this right?
     Record(HashMap<Identifier, Term>), // is this right?
     Function(Box<Expression>) // this should allow us to bind functions
 }
@@ -86,7 +86,7 @@ impl fmt::Display for Term {
             Term::Integer(term) => write!(f, "{}", term),
             Term::Float(term) => write!(f, "{}", term),
             Term::String { len, cap, data } => write!(f, "\"{:?}\"", data),
-            Term::Enum { val, data } => write!(f, "{:?}", data.get(*val)),
+            Term::Enum { val, data } => write!(f, "{:?}", data),
             Term::Record(term) => write!(f, "{:?}", term),
             Term::Function(expr) => write!(f, "{}", *expr),
         }
@@ -129,8 +129,7 @@ pub fn convert(term: &Term) -> Result<Type, String> {
         Term::Integer(_) => Ok(Type::Integer),
         Term::Float(_) => Ok(Type::Float),
         Term::String { len, cap, data } => Ok(Type::String),
-        Term::Enum { val, data } => data.get(*val)
-            .ok_or_else(|| "enum value out of range!".to_string()).cloned(),
+        Term::Enum { val, data } => convert(data),
         Term::Record(data) => {
             let mut result = HashMap::new();
             for (key, val) in data {
@@ -161,12 +160,12 @@ pub fn default(kind: &Type) -> Result<Term, String> {
         Type::String => Ok(Term::String { len: 0, cap: 0, data: vec!()}),
         Type::Enum(data) => match data.len() {
             0 => Err("attempting to get a default term of an enum with no variants!".to_string()),
-            _ => Ok(Term::Enum { val: 0, data: data.clone() })
+            _ => Ok(Term::Enum { val: 0, data: Box::new(default(data.get(0).unwrap())?) })
         },
         Type::Record(data) => {
             let mut result = HashMap::new();
             for (key, val) in data {
-                result.insert(key.clone(), default(&val)?);
+                result.insert(key.clone(), default(val)?);
             }
             return Ok(Term::Record(result));
         },
