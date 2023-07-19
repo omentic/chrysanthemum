@@ -74,6 +74,6 @@ pub fn Str(len: usize, cap: usize, data: Vec<usize>) -> Term {
     return Term::String { len, cap, data }
 }
 
-pub fn Enum(val: usize, data: Term) -> Term {
-    return Term::Enum { val, data: Box::new(data) }
+pub fn Union(val: usize, data: Term) -> Term {
+    return Term::Union { val, data: Box::new(data) }
 }

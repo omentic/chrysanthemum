@@ -24,7 +24,7 @@ fn main() {
 
                 input.clear();
                 stdin().read_line(&mut input).unwrap();
-                match infer(&empty_context, parser::parse_lambda(&input).unwrap()) {
+                match empty_context.infer(parser::parse_lambda(&input).unwrap()) {
                     Ok(kind) => println!("infers! {}", kind),
                     Err(e) => println!("{:?}", e),
                 }
@@ -36,10 +36,10 @@ fn main() {
 
                 input.clear();
                 stdin().read_line(&mut input).unwrap();
-                let kind = infer(&empty_context, parser::parse_lambda(&input).unwrap());
+                let kind = empty_context.infer(parser::parse_lambda(&input).unwrap());
                 match kind {
                     Ok(kind) => {
-                        match check(&empty_context, parser::parse_lambda(&input).unwrap(), &kind) {
+                        match empty_context.check(parser::parse_lambda(&input).unwrap(), &kind) {
                             Ok(_) => println!("checks!"),
                             Err(e) => println!("{:?}", e),
                         }
@@ -54,7 +54,7 @@ fn main() {
 
                 input.clear();
                 stdin().read_line(&mut input).unwrap();
-                match execute(&empty_context, parser::parse_lambda(&input).unwrap()) {
+                match empty_context.execute(parser::parse_lambda(&input).unwrap()) {
                     Ok(term) => println!("{}", term),
                     Err(e) => println!("{:?}", e)
                 }

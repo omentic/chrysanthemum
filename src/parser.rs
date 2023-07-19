@@ -2,7 +2,7 @@ use crate::ast::*;
 use multipeek::multipeek;
 
 /// Parses a lambda-calculus-like language into an AST.
-pub fn parse_lambda(input: &str) -> Result<Expression, peg::error::ParseError<peg::str::LineCol>> {
+pub fn parse_lambda(input: &str) -> Result<Expression> {
     // this is kinda awful, i miss my simple nim pegs
     peg::parser! {
         grammar lambda() for str {
@@ -98,7 +98,7 @@ pub fn parse_lambda(input: &str) -> Result<Expression, peg::error::ParseError<pe
             }
         }
     }
-    return lambda::expr(input.trim());
+    return Ok(lambda::expr(input.trim())?);
 }
 
 const operators: [char; 17] =
@@ -115,15 +115,15 @@ pub enum Token {
     Value(String),
     Char(char),
     String(String),
-    Comment(String),
-    Token(String), // catch-all
+    Comment(String), // unused tbh
+    // Token(String), // catch-all
     ScopeBegin, // {
     ScopeEnd,   // }
     ExprEnd,    // ;
 }
 
 /// Properly lexes a whitespace-oriented language into a series of tokens.
-pub fn lex(input: &str) -> Result<Vec<Token>, &'static str> {
+pub fn lex(input: &str) -> Result<Vec<Token>> {
     enum State {
         Default,
         Char,
@@ -142,6 +142,7 @@ pub fn lex(input: &str) -> Result<Vec<Token>, &'static str> {
     let mut buffer = String::new();
     let mut result = Vec::new();
 
+    // .next() advances the iterator, .peek() does not
     let mut input = multipeek(input.chars()); // multipeek my beloved
     while let Some(c) = input.next() {
         match state {
@@ -151,9 +152,36 @@ pub fn lex(input: &str) -> Result<Vec<Token>, &'static str> {
                     result.push(parse_token(&buffer)?);
                     buffer.clear();
                 },
-                ' ' => todo!(),
-                '\n' => todo!(),
-                '\t' => return Err("Tabs are not supported!"),
+                ' ' => {
+                    // hmm
+                    todo!()
+                },
+                '\n' => {
+                    if let Some(previous) = result.last() {
+                        match previous {
+                            // same scope, no seperator
+                            Token::Operator(_) => (),
+                            // do we have this tbh????
+                            Token::Keyword(_) => return Err("lines shouldn't end with a keyword i think".into()),
+                            // i think uhh
+                            Token::Identifier(_) | Token::Value(_) | Token::Char(_) | Token::String(_) =>
+                                result.push(Token::ExprEnd),
+                            // always scope??
+                            Token::Separator(_) => result.push(Token::ScopeBegin),
+                            // idk
+                            Token::Comment(_) | Token::ScopeBegin | Token::ScopeEnd | Token::ExprEnd =>
+                                return Err("uhh idk always scope lol".into()),
+                        }
+                    }
+                    todo!()
+                },
+                '\t' => return Err("Tabs are not supported!".into()),
+                _ if indent.blank => {
+                    indent.blank = false;
+                    // indentation check
+                    todo!();
+                    buffer.push(c);
+                },
                 '\'' => {
                     result.push(parse_token(&buffer)?);
                     buffer.clear();
@@ -187,12 +215,6 @@ pub fn lex(input: &str) -> Result<Vec<Token>, &'static str> {
                         indent.blank = false;
                     }
                 }
-                _ if indent.blank => {
-                    indent.blank = false;
-                    // indentation check
-                    todo!();
-                    buffer.push(c);
-                }
                 _ => buffer.push(c)
             },
             State::Char => match c {
@@ -205,11 +227,11 @@ pub fn lex(input: &str) -> Result<Vec<Token>, &'static str> {
                         Some('t') => result.push(Token::Char('\t')),
                         Some('\"') => result.push(Token::Char('\"')),
                         Some('\'') => result.push(Token::Char('\'')),
-                        _ => return Err("Invalid string escape sequence!"),
+                        _ => return Err("Invalid string escape sequence!".into()),
                     }
                     state = State::Default;
                     if input.next() != Some('\'') {
-                        return Err("Invalid character sequence!")
+                        return Err("Invalid character sequence!".into())
                     }
                 },
                 '\'' => {
@@ -220,7 +242,7 @@ pub fn lex(input: &str) -> Result<Vec<Token>, &'static str> {
                     result.push(Token::Char(c));
                     state = State::Default;
                     if input.next() != Some('\'') {
-                        return Err("Invalid character sequence!")
+                        return Err("Invalid character sequence!".into())
                     }
                 }
             },
@@ -233,7 +255,7 @@ pub fn lex(input: &str) -> Result<Vec<Token>, &'static str> {
                     Some('t') => buffer.push('\t'),
                     Some('\"') => buffer.push('\"'),
                     Some('\'') => buffer.push('\''),
-                    _ => return Err("Invalid string escape sequence!"),
+                    _ => return Err("Invalid string escape sequence!".into()),
                 },
                 '\"' => {
                     state = State::Default;
@@ -255,7 +277,8 @@ pub fn lex(input: &str) -> Result<Vec<Token>, &'static str> {
             State::Comment => match c {
                 '\n' => {
                     state = State::Default;
-                    result.push(Token::Comment(buffer.to_string()));
+                    // result.push(Token::Comment(buffer.to_string()));
+                    buffer.clear();
                 },
                 _ => buffer.push(c)
             },
@@ -264,7 +287,7 @@ pub fn lex(input: &str) -> Result<Vec<Token>, &'static str> {
     return Ok(result);
 }
 
-fn parse_token(token: &str) -> Result<Token, &'static str> {
+fn parse_token(token: &str) -> Result<Token> {
     if keywords.contains(&token) {
         Ok(Token::Keyword(token.to_string()))
     } else if is_operator(token) {
@@ -274,7 +297,7 @@ fn parse_token(token: &str) -> Result<Token, &'static str> {
     } else if is_identifier(token) {
         Ok(Token::Identifier(token.to_string()))
     } else {
-        Err("Could not parse token!")
+        Err("Could not parse token!".into())
     }
 }
 

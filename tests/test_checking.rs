@@ -32,15 +32,15 @@ fn test_parsing_succeeds() {
 #[test]
 fn test_inference() {
     let context = Context::new();
-    assert_eq!(infer(&context, parse_lambda(sanity_check).unwrap()), Ok(Int));
-    assert_eq!(infer(&context, parse_lambda(negate).unwrap()), Ok(Func(Bool, Bool)));
-    assert_eq!(infer(&context, parse_lambda(basic_abstraction).unwrap()), Ok(Func(Int, Int)));
-    assert_eq!(infer(&context, parse_lambda(basic_application).unwrap()), Ok(Int));
-    assert_eq!(infer(&context, parse_lambda(correct_cond_abs).unwrap()), Ok(Func(Bool, Int)));
-    assert_eq!(infer(&context, parse_lambda(correct_cond).unwrap()), Ok(Nat));
-    assert!(infer(&context, parse_lambda(not_inferrable).unwrap()).is_err());
-    assert!(infer(&context, parse_lambda(incorrect_branches).unwrap()).is_err());
-    assert!(infer(&context, parse_lambda(incorrect_cond_abs).unwrap()).is_err());
+    assert_eq!(context.infer(parse_lambda(sanity_check).unwrap()).unwrap(), Int);
+    assert_eq!(context.infer(parse_lambda(negate).unwrap()).unwrap(), Func(Bool, Bool));
+    assert_eq!(context.infer(parse_lambda(basic_abstraction).unwrap()).unwrap(), Func(Int, Int));
+    assert_eq!(context.infer(parse_lambda(basic_application).unwrap()).unwrap(), Int);
+    assert_eq!(context.infer(parse_lambda(correct_cond_abs).unwrap()).unwrap(), Func(Bool, Int));
+    assert_eq!(context.infer(parse_lambda(correct_cond).unwrap()).unwrap(), Nat);
+    assert!(context.infer(parse_lambda(not_inferrable).unwrap()).is_err());
+    assert!(context.infer(parse_lambda(incorrect_branches).unwrap()).is_err());
+    assert!(context.infer(parse_lambda(incorrect_cond_abs).unwrap()).is_err());
 }
 
 #[test]
@@ -48,17 +48,17 @@ fn test_checking() {
     let context = Context::new();
 
     // uninteresting
-    assert!(check(&context, parse_lambda(sanity_check).unwrap(), &Int).is_ok());
-    assert!(check(&context, parse_lambda(negate).unwrap(), &Func(Bool, Bool)).is_ok());
-    assert!(check(&context, parse_lambda(basic_abstraction).unwrap(), &Func(Int, Int)).is_ok());
-    assert!(check(&context, parse_lambda(basic_application).unwrap(), &Int).is_ok());
-    assert!(check(&context, parse_lambda(correct_cond_abs).unwrap(), &Func(Bool, Int)).is_ok());
-    assert!(check(&context, parse_lambda(correct_cond).unwrap(), &Nat).is_ok());
-    assert!(check(&context, parse_lambda(incorrect_branches).unwrap(), &Unit).is_err());
-    assert!(check(&context, parse_lambda(incorrect_cond_abs).unwrap(), &Error).is_err());
+    assert!(context.check(parse_lambda(sanity_check).unwrap(), &Int).is_ok());
+    assert!(context.check(parse_lambda(negate).unwrap(), &Func(Bool, Bool)).is_ok());
+    assert!(context.check(parse_lambda(basic_abstraction).unwrap(), &Func(Int, Int)).is_ok());
+    assert!(context.check(parse_lambda(basic_application).unwrap(), &Int).is_ok());
+    assert!(context.check(parse_lambda(correct_cond_abs).unwrap(), &Func(Bool, Int)).is_ok());
+    assert!(context.check(parse_lambda(correct_cond).unwrap(), &Nat).is_ok());
+    assert!(context.check(parse_lambda(incorrect_branches).unwrap(), &Unit).is_err());
+    assert!(context.check(parse_lambda(incorrect_cond_abs).unwrap(), &Error).is_err());
 
     // more fun
-    assert!(check(&context, parse_lambda(not_inferrable).unwrap(), &Func(Bool, Func(Int, Func(Int, Int)))).is_ok());
-    assert!(check(&context, parse_lambda(not_inferrable).unwrap(), &Func(Bool, Func(Nat, Func(Nat, Nat)))).is_ok());
-    assert!(check(&context, parse_lambda(not_inferrable).unwrap(), &Func(Bool, Func(Unit, Func(Unit, Unit)))).is_ok());
+    assert!(context.check(parse_lambda(not_inferrable).unwrap(), &Func(Bool, Func(Int, Func(Int, Int)))).is_ok());
+    assert!(context.check(parse_lambda(not_inferrable).unwrap(), &Func(Bool, Func(Nat, Func(Nat, Nat)))).is_ok());
+    assert!(context.check(parse_lambda(not_inferrable).unwrap(), &Func(Bool, Func(Unit, Func(Unit, Unit)))).is_ok());
 }
