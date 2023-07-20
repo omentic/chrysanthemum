@@ -14,8 +14,8 @@ fn test_simple() {
 #[test]
 fn test_complex() {
     let mut context = Context::new();
-    context.insert(String::from("x"), Term::Natural(413));
-    context.insert(String::from("y"), Term::Boolean(true));
+    context.insert_term(String::from("x"), Term::Natural(413));
+    context.insert_term(String::from("y"), Term::Boolean(true));
     assert_eq!(context.execute(Var("x")).unwrap(), Term::Natural(413));
     assert_eq!(context.execute(Cond(Var("y"), Const(Term::Integer(612)),
         Var("x"))).unwrap(), Term::Integer(612));

@@ -1,4 +1,5 @@
 #![allow(unused_variables, non_upper_case_globals)]
+#![feature(let_chains)]
 
 pub mod ast;
 pub mod bidirectional;

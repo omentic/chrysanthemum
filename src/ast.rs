@@ -1,10 +1,18 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 pub type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>;
-pub type Identifier = String;
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Context(HashMap<Identifier, Term>);
+pub struct Context(HashMap<Identifier, Term>, HashMap<Signature, Expression>);
+
+pub type Identifier = String;
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Signature {
+    pub name: Identifier,
+    pub from: Type,
+    pub to: Type
+}
 
 // note: built-in functions do NOT go here!
 #[derive(Debug, Clone, PartialEq)]
@@ -19,7 +27,7 @@ pub enum Expression {
 }
 
 /// All supported types.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Type {
     Empty,
     Error,
@@ -33,12 +41,16 @@ pub enum Type {
     Array(Box<Type>, usize), // todo: replace with dependent types
     Slice(Box<Type>), // potentially fucky lifetime stuff too
     Union(Vec<Type>), // unordered
-    Struct(HashMap<Identifier, Type>), // unordered
+    Struct(BTreeMap<Identifier, Type>), // unordered
     Tuple(Vec<Type>, Vec<Option<Identifier>>), // ordered with labels
     Function{from: Box<Type>, to: Box<Type>},
+    Interface(Vec<Signature>, Option<Box<Type>>), // typeclasses "interfaces"
+    Oneself,
 }
 
 /// Data associated with a type.
+// Note: no Interfaces, Slices, Empty, Error: those cannot be constructed.
+// Note: no Functions: those inhabit a separate context. it's just easier
 #[derive(Debug, Clone, PartialEq)]
 pub enum Term {
     Unit(),
@@ -50,9 +62,8 @@ pub enum Term {
     List(Vec<Term>),
     Array(Vec<Term>),
     Union(Box<Term>),
-    Struct(HashMap<Identifier, Term>),
+    Struct(BTreeMap<Identifier, Term>),
     Tuple(Vec<Term>, Vec<Option<Identifier>>),
-    Function(Box<Expression>) // this should allow us to bind functions
 }
 
 impl Term {
@@ -75,7 +86,7 @@ impl Term {
             },
             Term::Union(data) => data.convert(),
             Term::Struct(data) => {
-                let mut result = HashMap::new();
+                let mut result = BTreeMap::new();
                 for (key, val) in data {
                     result.insert(key.clone(), val.convert()?);
                 }
@@ -87,13 +98,6 @@ impl Term {
                     result.push(val.convert()?);
                 }
                 Ok(Type::Tuple(result, fields.clone()))
-            },
-            Term::Function(func) => match *func.clone() {
-                Expression::Annotation { expr, kind } => match kind {
-                    Type::Function { from, to } => Ok(Type::Function { from, to }),
-                    _ => Err("function term value not a function!".into())
-                }
-                _ => Err("function term value does not have an annotation!".into())
             },
         }
     }
@@ -116,7 +120,7 @@ impl Type {
             Type::Slice(_) => Err("attempting to take the default term of a slice".into()),
             Type::Union(data) => Err("attempting to take the default term of a union".into()),
             Type::Struct(data) => {
-                let mut result = HashMap::new();
+                let mut result = BTreeMap::new();
                 for (key, val) in data {
                     result.insert(key.clone(), val.default()?);
                 }
@@ -131,6 +135,8 @@ impl Type {
             },
             Type::Function { from, to } =>
                 Err("attempting to take the default term of a function type".into()),
+            Type::Interface(_, _) => Err("attempting to take the default term of an interface".into()),
+            Type::Oneself => Err("attempting to take the default term of Self".into()),
         }
     }
 }
@@ -182,7 +188,7 @@ impl core::fmt::Display for Type {
                 }
                 write!(f, "]")
             },
-            Type::Tuple(data, fields) =>  {
+            Type::Tuple(data, fields) => {
                 write!(f, "tuple[")?;
                 for (i, (val, ident)) in std::iter::zip(data, fields).enumerate() {
                     match ident {
@@ -196,6 +202,20 @@ impl core::fmt::Display for Type {
                 write!(f, "]")
             },
             Type::Function { from, to } => write!(f, "{}->{}", from, to),
+            Type::Interface(data, kind) => {
+                write!(f, "interface[")?;
+                for (i, sig) in data.iter().enumerate() {
+                    write!(f, "func {}({}): {}", sig.name, sig.from, sig.to)?;
+                    if !(i == data.len() - 1) {
+                        write!(f, ", ")?;
+                    }
+                }
+                if let Some(data) = kind {
+                    write!(f, " for {}", data)?;
+                }
+                write!(f, "]")
+            },
+            Type::Oneself => write!(f, "Self"),
         }
     }
 }
@@ -216,19 +236,30 @@ impl core::fmt::Display for Term {
             Term::Union(data) => write!(f, "{{{:?}}}", data),
             Term::Struct(term) => write!(f, "{{{:?}}}", term),
             Term::Tuple(data, fields) => write!(f, "({:?})", data),
-            Term::Function(expr) => write!(f, "{}", *expr),
         }
     }
 }
 
 impl Context {
     pub fn new() -> Self {
-        Context(HashMap::new())
+        Context(HashMap::new(), HashMap::new())
     }
-    pub fn get(&self, k: &Identifier) -> Option<&Term> {
+    pub fn get_term(&self, k: &Identifier) -> Option<&Term> {
         self.0.get(k)
     }
-    pub fn insert(&mut self, k: Identifier, v: Term) -> Option<Term> {
+    pub fn insert_term(&mut self, k: Identifier, v: Term) -> Option<Term> {
         self.0.insert(k, v)
+    }
+    pub fn get_func(&self, k: &Signature) -> Option<&Expression> {
+        self.1.get(k)
+    }
+    pub fn insert_func(&mut self, k: Signature, v: Expression) -> Option<Expression> {
+        self.1.insert(k, v)
+    }
+    pub fn contains_term(&self, k: &Identifier) -> bool {
+        self.0.contains_key(k)
+    }
+    pub fn contains_sig(&self, k: &Signature) -> bool {
+        self.1.contains_key(k)
     }
 }

@@ -6,7 +6,7 @@ impl Context {
         match expression {
             Expression::Annotation { expr, .. } => self.execute(*expr),
             Expression::Constant { term } => Ok(term),
-            Expression::Variable { id } => match self.get(&id) {
+            Expression::Variable { id } => match self.get_term(&id) {
                 Some(term) => Ok(term.clone()),
                 None => Err(format!("no such variable in context {self:?}").into())
             },
@@ -16,7 +16,7 @@ impl Context {
                 Expression::Abstraction { param, func } => {
                     let value = self.execute(*arg)?;
                     let mut context = self.clone();
-                    context.insert(param, value);
+                    context.insert_term(param, value);
                     return context.execute(*func);
                 }
                 _ => Err(format!("attempting to execute an application to non-abstraction {}", *func).into())

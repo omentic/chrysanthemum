@@ -1,5 +1,3 @@
-// Simple bidirectional type checking
-
 use crate::ast::*;
 
 impl Context {
@@ -9,20 +7,20 @@ impl Context {
             // fall through to inference mode
             Expression::Annotation { expr, kind } => {
                 let result = self.infer(Expression::Annotation { expr, kind })?;
-                return match result.subtype(&target) {
+                return match self.subtype(&result, &target) {
                     true => Ok(()),
                     false => Err(format!("inferred type {result} does not match target {target}").into())
                 }
             },
             // Bt-CheckInfer
-            Expression::Constant { term } => match &term.convert()?.subtype(&target) {
+            Expression::Constant { term } => match self.subtype(&term.convert()?, &target) {
                 true => Ok(()),
                 false => Err(format!("constant is of wrong type, expected {target}").into())
                 // false => Ok(()) // all our constants are Empty for now
             },
             // Bt-CheckInfer
-            Expression::Variable { id } => match self.get(&id) {
-                Some(term) if term.convert()?.subtype(&target) => Ok(()),
+            Expression::Variable { id } => match self.get_term(&id) {
+                Some(term) if self.subtype(&term.convert()?, &target) => Ok(()),
                 Some(_) => Err(format!("variable {id} is of wrong type").into()),
                 None => Err(format!("failed to find variable {id} in context").into())
             },
@@ -30,7 +28,7 @@ impl Context {
             Expression::Abstraction { param, func } => match target {
                 Type::Function { from, to } => {
                     let mut context = self.clone();
-                    context.insert(param, from.default()?);
+                    context.insert_term(param, from.default()?);
                     return context.check(*func, &to);
                 },
                 _ => Err(format!("attempting to check an abstraction with a non-function type {target}").into())
@@ -38,7 +36,7 @@ impl Context {
             // fall through to inference mode
             Expression::Application { func, arg } => {
                 let result = &self.infer(Expression::Application { func, arg })?;
-                return match result.subtype(&target) {
+                return match self.subtype(result, target) {
                     true => Ok(()),
                     false => Err(format!("inferred type {result} does not match {target}").into())
                 }
@@ -61,7 +59,7 @@ impl Context {
             // Bt-True / Bt-False / etc
             Expression::Constant { term } => term.convert(),
             // Bt-Var
-            Expression::Variable { id } => match self.get(&id) {
+            Expression::Variable { id } => match self.get_term(&id) {
                 Some(term) => Context::new().infer(Expression::Constant { term: term.clone() }),
                 None => Err(format!("failed to find variable in context {self:?}").into())
             },
@@ -80,7 +78,7 @@ impl Context {
                 self.check(*if_cond, &Type::Boolean)?;
                 let if_then = self.infer(*if_then)?;
                 let if_else = self.infer(*if_else)?;
-                if if_then.subtype(&if_else) && if_else.subtype(&if_then) {
+                if self.subtype(&if_then, &if_else) && self.subtype(&if_else, &if_then) {
                     Ok(if_then) // fixme: should be the join
                 } else {
                     Err(format!("if clauses of different types: {if_then} and {if_else}").into())
@@ -88,21 +86,18 @@ impl Context {
             }
         }
     }
-}
 
-impl Type {
     /// The subtyping relation between any two types.
-    /// Self is a subtype of Other.
-    /// Self can be safely used in any context Other is expected.
-    pub fn subtype(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Type::Tuple(is_data, is_fields), Type::Tuple (of_data, of_fields)) => {
+    /// "is" is a subtype of "of", i.e. "is" can be safely used in any context "of" is expected.
+    pub fn subtype(&self, is: &Type, of: &Type) -> bool {
+        match (is, of) {
+            (Type::Tuple(is_data, is_fields), Type::Tuple(of_data, of_fields)) => {
                 // length, order, and subtype
                 if is_data.len() != of_data.len() || is_fields.len() != of_fields.len() {
                     return false;
                 }
                 for (is, of) in std::iter::zip(is_data, of_data) {
-                    if !is.subtype(of) {
+                    if !self.subtype(is, of) {
                         return false;
                     }
                 }
@@ -118,7 +113,7 @@ impl Type {
                 for (key, of_value) in of {
                     match is.get(key) {
                         Some(is_value) => {
-                            if !is_value.subtype(of_value) {
+                            if !self.subtype(is_value, of_value) {
                                 return false;
                             }
                         }
@@ -138,16 +133,57 @@ impl Type {
             },
             (Type::Function { from: is_from, to: is_to },
              Type::Function { from: of_from, to: of_to }) => {
-                of_from.subtype(is_from) && is_to.subtype(of_to)
+                self.subtype(of_from, is_from) && self.subtype(is_to, of_to)
+            },
+            (is, Type::Interface(signatures, associated)) => {
+                if let Some(of) = associated && !self.subtype(is, of) {
+                    return false;
+                }
+                for sig in signatures.clone() {
+                    let signature = Signature {
+                        name: sig.name,
+                        from: sig.from.deselfify(is),
+                        to: sig.to.deselfify(is)
+                    };
+                    if !(self.contains_sig(&signature)) { // we need context for interfaces...
+                        return false;
+                    }
+                }
+                true
             },
             (Type::List(is), Type::Slice(of)) | (Type::Array(is, _), Type::Slice(of)) |
-            (Type::List(is), Type::List(of)) |  (Type::Slice(is), Type::Slice(of)) => is.subtype(of),
-            (Type::Array(is, is_size), Type::Array(of, of_size)) => is.subtype(of) && is_size == of_size,
+            (Type::List(is), Type::List(of)) |  (Type::Slice(is), Type::Slice(of)) => self.subtype(is, of),
+            (Type::Array(is, is_size), Type::Array(of, of_size)) => self.subtype(is, of) && is_size == of_size,
             (Type::Natural, Type::Integer) => true, // obviously not, but let's pretend
             (_, Type::Empty) => true,   // top type: every type is a subtype of the empty type (empty as in structurally empty)
             (Type::Error, _) => true,   // bottom type: no type is a subtype of the error type
-            (_, _) if self == other => true,
-            (_, _) => false
+            (_, _) => is == of
+        }
+    }
+}
+
+impl Type {
+    /// Replace explicit Oneself types with a replacement type. For interfaces.
+    fn deselfify(self, replacement: &Type) -> Self {
+        match self {
+            Type::Oneself => replacement.clone(),
+            Type::Empty | Type::Error | Type::Unit | Type::Boolean |
+            Type::Natural | Type::Integer | Type::Float | Type::String => self,
+            Type::List(data) => Type::List(Box::new(data.deselfify(replacement))),
+            Type::Array(data, len) => Type::Array(Box::new(data.deselfify(replacement)), len),
+            Type::Slice(data) => Type::Slice(Box::new(data.deselfify(replacement))),
+            Type::Union(data) => Type::Union(
+                data.iter().map(|x| x.clone().deselfify(replacement)).collect()),
+            Type::Struct(data) => Type::Struct(
+                data.iter().map(|(k, v)| (k.clone(), v.clone().deselfify(replacement))).collect()),
+            Type::Tuple(data, idents) => Type::Tuple(
+                data.iter().map(|x| x.clone().deselfify(replacement)).collect(), idents),
+            Type::Function { from, to } => Type::Function {
+                from: Box::new(from.deselfify(replacement)),
+                to: Box::new(to.deselfify(replacement))
+            },
+            Type::Interface(signatures, associated) =>
+                Type::Interface(signatures, associated.map(|x| Box::new(x.deselfify(replacement)))),
         }
     }
 }
