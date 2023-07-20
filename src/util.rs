@@ -70,10 +70,10 @@ pub fn Float(term: f32) -> Term {
     return Term::Float(term)
 }
 
-pub fn Str(len: usize, cap: usize, data: Vec<usize>) -> Term {
-    return Term::String { len, cap, data }
+pub fn Str(data: &str) -> Term {
+    return Term::String(data.into())
 }
 
-pub fn Union(val: usize, data: Term) -> Term {
-    return Term::Union { val, data: Box::new(data) }
+pub fn Union(data: Term) -> Term {
+    return Term::Union(Box::new(data))
 }

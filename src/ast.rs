@@ -29,8 +29,12 @@ pub enum Type {
     Integer,
     Float,
     String,
-    Union(Vec<Type>),
-    Struct(HashMap<Identifier, Type>),
+    List(Box<Type>),
+    Array(Box<Type>, usize), // todo: replace with dependent types
+    Slice(Box<Type>), // potentially fucky lifetime stuff too
+    Union(Vec<Type>), // unordered
+    Struct(HashMap<Identifier, Type>), // unordered
+    Tuple(Vec<Type>, Vec<Option<Identifier>>), // ordered with labels
     Function{from: Box<Type>, to: Box<Type>},
 }
 
@@ -42,9 +46,12 @@ pub enum Term {
     Natural(usize),
     Integer(isize),
     Float(f32),
-    String{len: usize, cap: usize, data: Vec<usize>},
-    Union{val: usize, data: Box<Term>}, // is this right?
-    Struct(HashMap<Identifier, Term>), // is this right?
+    String(String),
+    List(Vec<Term>),
+    Array(Vec<Term>),
+    Union(Box<Term>),
+    Struct(HashMap<Identifier, Term>),
+    Tuple(Vec<Term>, Vec<Option<Identifier>>),
     Function(Box<Expression>) // this should allow us to bind functions
 }
 
@@ -57,14 +64,29 @@ impl Term {
             Term::Natural(_) => Ok(Type::Natural),
             Term::Integer(_) => Ok(Type::Integer),
             Term::Float(_) => Ok(Type::Float),
-            Term::String { len, cap, data } => Ok(Type::String),
-            Term::Union { val, data } => data.convert(),
+            Term::String(_) => Ok(Type::String),
+            Term::List(data) => match data.len() {
+                0 => Err("attempting to get the type of an empty list!".into()),
+                _ => Ok(Type::List(Box::new(data.get(0).unwrap().convert()?))),
+            },
+            Term::Array(data) => match data.len() {
+                0 => Err("attempting to get the type of an empty array!".into()),
+                _ => Ok(Type::Array(Box::new(data.get(0).unwrap().convert()?), data.len()))
+            },
+            Term::Union(data) => data.convert(),
             Term::Struct(data) => {
                 let mut result = HashMap::new();
                 for (key, val) in data {
                     result.insert(key.clone(), val.convert()?);
                 }
-                return Ok(Type::Struct(result));
+                Ok(Type::Struct(result))
+            },
+            Term::Tuple(data, fields) => {
+                let mut result = Vec::new();
+                for val in data {
+                    result.push(val.convert()?);
+                }
+                Ok(Type::Tuple(result, fields.clone()))
             },
             Term::Function(func) => match *func.clone() {
                 Expression::Annotation { expr, kind } => match kind {
@@ -72,7 +94,7 @@ impl Term {
                     _ => Err("function term value not a function!".into())
                 }
                 _ => Err("function term value does not have an annotation!".into())
-            }
+            },
         }
     }
 }
@@ -88,17 +110,24 @@ impl Type {
             Type::Natural => Ok(Term::Natural(0)),
             Type::Integer => Ok(Term::Integer(0)),
             Type::Float => Ok(Term::Float(0.0)),
-            Type::String => Ok(Term::String { len: 0, cap: 0, data: vec!()}),
-            Type::Union(data) => match data.len() {
-                0 => Err("attempting to get a default term of an enum with no variants!".into()),
-                _ => Ok(Term::Union { val: 0, data: Box::new(data.get(0).unwrap().default()?) })
-            },
+            Type::String => Ok(Term::String(String::new())),
+            Type::List(data) => Ok(Term::List(Vec::<Term>::new())),
+            Type::Array(data, len) => Ok(Term::Array(vec![data.default()?; *len])),
+            Type::Slice(_) => Err("attempting to take the default term of a slice".into()),
+            Type::Union(data) => Err("attempting to take the default term of a union".into()),
             Type::Struct(data) => {
                 let mut result = HashMap::new();
                 for (key, val) in data {
                     result.insert(key.clone(), val.default()?);
                 }
-                return Ok(Term::Struct(result));
+                Ok(Term::Struct(result))
+            },
+            Type::Tuple(data, fields) => {
+                let mut result = Vec::new();
+                for kind in data {
+                    result.push(kind.default()?)
+                }
+                Ok(Term::Tuple(result, fields.clone()))
             },
             Type::Function { from, to } =>
                 Err("attempting to take the default term of a function type".into()),
@@ -130,13 +159,49 @@ impl core::fmt::Display for Type {
             Type::Integer => write!(f, "int"),
             Type::Float => write!(f, "float"),
             Type::String => write!(f, "str"),
-            Type::Union(data) => write!(f, "({:?})", data),
-            Type::Struct(data) => write!(f, "{{{:?}}}", data),
+            Type::List(data) => write!(f, "list[{}]", data),
+            Type::Array(data, len) => write!(f, "array[{}, {}]", data, len),
+            Type::Slice(data) => write!(f, "slice[{}]", data),
+            Type::Union(data) => {
+                write!(f, "union[")?;
+                for (i, val) in data.iter().enumerate() {
+                    write!(f, "{}", val)?;
+                    if !(i == data.len() - 1) {
+                        write!(f, ", ")?;
+                    }
+                }
+                write!(f, "]")
+            },
+            Type::Struct(data) => {
+                write!(f, "struct[")?;
+                for (i, (key, val)) in data.iter().enumerate() {
+                    write!(f, "{}: {}", key, val)?;
+                    if !(i == data.len() - 1) {
+                        write!(f, ", ")?;
+                    }
+                }
+                write!(f, "]")
+            },
+            Type::Tuple(data, fields) =>  {
+                write!(f, "tuple[")?;
+                for (i, (val, ident)) in std::iter::zip(data, fields).enumerate() {
+                    match ident {
+                        Some(key) => write!(f, "{}: {}", key, val)?,
+                        None => write!(f, "{}", val)?
+                    }
+                    if !(i == data.len() - 1) {
+                        write!(f, ", ")?;
+                    }
+                }
+                write!(f, "]")
+            },
             Type::Function { from, to } => write!(f, "{}->{}", from, to),
         }
     }
 }
 
+// hatehatehate that you can't implement a trait for foreign types
+// let me impl display for vec god dammit
 impl core::fmt::Display for Term {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
@@ -145,9 +210,12 @@ impl core::fmt::Display for Term {
             Term::Natural(term) => write!(f, "{}", term),
             Term::Integer(term) => write!(f, "{}", term),
             Term::Float(term) => write!(f, "{}", term),
-            Term::String { len, cap, data } => write!(f, "\"{:?}\"", data),
-            Term::Union { val, data } => write!(f, "{:?}", data),
-            Term::Struct(term) => write!(f, "{:?}", term),
+            Term::String(data) => write!(f, "\"{}\"", data),
+            Term::List(data) => write!(f, "[{:?}]", data),
+            Term::Array(data) => write!(f, "[{:?}]", data),
+            Term::Union(data) => write!(f, "{{{:?}}}", data),
+            Term::Struct(term) => write!(f, "{{{:?}}}", term),
+            Term::Tuple(data, fields) => write!(f, "({:?})", data),
             Term::Function(expr) => write!(f, "{}", *expr),
         }
     }

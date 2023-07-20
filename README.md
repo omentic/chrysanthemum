@@ -4,7 +4,10 @@ chrysanthemum is a simple language with a type system, initially written as a te
 It implements a number of features from the excellent *Types and Programming Languages*, including:
 - The simply typed lambda calculus
 - Bidirectional type checking and subtyping support
-- A somewhat complex type system: including support for `unit`, `bool`, `nat`, `int`, `float`, `str`, `union`, `struct`, `empty`, and `err` types
+- A somewhat complex type system: including support for:
+  - `unit`, `bool`, `int`, `nat`, `float`, `str`,
+  - `struct`, `tuple`, `union`, `list`, `array`, `slice`,
+  - `empty`, `error`
 
 ## todo
 
@@ -13,7 +16,8 @@ It implements a number of features from the excellent *Types and Programming Lan
 - [x] to lose my sanity: implement `parse_file`
 - [x] bidirectional typechecking: implement `infer` and `check`
 - [x] extend to additional basic types: refactor `Term`
-- [ ] extend to complex types: implement `access`
+- [x] extend to complex types: improve `subtype`
+- [ ] make complex types useful: implement `access`
 - [ ] type classes: implement `monomorphize`
 - [ ] simple effects: extend `ast`
 - [x] testtesttest

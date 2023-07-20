@@ -92,12 +92,31 @@ impl Context {
 
 impl Type {
     /// The subtyping relation between any two types.
+    /// Self is a subtype of Other.
+    /// Self can be safely used in any context Other is expected.
     pub fn subtype(&self, other: &Self) -> bool {
         match (self, other) {
-            (Type::Struct(is_fields), Type::Struct(of_fields)) => {
+            (Type::Tuple(is_data, is_fields), Type::Tuple (of_data, of_fields)) => {
+                // length, order, and subtype
+                if is_data.len() != of_data.len() || is_fields.len() != of_fields.len() {
+                    return false;
+                }
+                for (is, of) in std::iter::zip(is_data, of_data) {
+                    if !is.subtype(of) {
+                        return false;
+                    }
+                }
+                for (is, of) in std::iter::zip(is_fields, of_fields) {
+                    if is != of {
+                        return false;
+                    }
+                }
+                true
+            },
+            (Type::Struct(is), Type::Struct(of)) => {
                 // width, depth, and permutation
-                for (key, of_value) in of_fields {
-                    match is_fields.get(key) {
+                for (key, of_value) in of {
+                    match is.get(key) {
                         Some(is_value) => {
                             if !is_value.subtype(of_value) {
                                 return false;
@@ -106,16 +125,27 @@ impl Type {
                         None => return false
                     }
                 }
-                return true;
+                true
             },
-            (Type::Union(is_variants), Type::Union(of_variants)) => false, // fixme
+            (Type::Union(is), Type::Union(of)) => {
+                // a union type is a subtype of another if the latter has *more* fields (opposite structs!)
+                for data in of {
+                    if !is.contains(data) {
+                        return false;
+                    }
+                }
+                true
+            },
             (Type::Function { from: is_from, to: is_to },
              Type::Function { from: of_from, to: of_to }) => {
                 of_from.subtype(is_from) && is_to.subtype(of_to)
             },
+            (Type::List(is), Type::Slice(of)) | (Type::Array(is, _), Type::Slice(of)) |
+            (Type::List(is), Type::List(of)) |  (Type::Slice(is), Type::Slice(of)) => is.subtype(of),
+            (Type::Array(is, is_size), Type::Array(of, of_size)) => is.subtype(of) && is_size == of_size,
             (Type::Natural, Type::Integer) => true, // obviously not, but let's pretend
-            (_, Type::Empty) => true,
-            (Type::Error, _) => true,
+            (_, Type::Empty) => true,   // top type: every type is a subtype of the empty type (empty as in structurally empty)
+            (Type::Error, _) => true,   // bottom type: no type is a subtype of the error type
             (_, _) if self == other => true,
             (_, _) => false
         }
