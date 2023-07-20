@@ -40,7 +40,7 @@ pub fn parse_lambda(input: &str) -> Result<Expression> {
             }
             // fixme: brackets are necessary here
             rule function() -> Type = "(" f:kind() " "* "->" " "* t:kind() ")" {
-                Type::Function { from: Box::new(f), to: Box::new(t) }
+                Type::Function(Box::new(f), Box::new(t))
             }
             rule kind() -> Type
              = k:(function() / primitive()) {

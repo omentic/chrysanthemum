@@ -26,7 +26,7 @@ impl Context {
             },
             // Bt-Abs
             Expression::Abstraction { param, func } => match target {
-                Type::Function { from, to } => {
+                Type::Function(from, to) => {
                     let mut context = self.clone();
                     context.insert_term(param, from.default()?);
                     return context.check(*func, &to);
@@ -65,14 +65,14 @@ impl Context {
             },
             // Bt-App
             Expression::Application { func, arg } => match self.infer(*func)? {
-                Type::Function { from, to } => self.check(*arg, &*from).map(|x| *to),
-                _ => Err(format!("application abstraction is not a function type").into())
+                Type::Function(from, to) => self.check(*arg, &*from).map(|x| *to),
+                _ => Err("application abstraction is not a function type".into())
             },
             // inference from an abstraction is always an error
             // we could try and infer the func without adding the parameter to scope:
             // but this is overwhelmingly likely to be an error, so just report it now.
             Expression::Abstraction { param, func } =>
-                Err(format!("attempting to infer from an abstraction").into()),
+                Err("attempting to infer from an abstraction".into()),
             // idk
             Expression::Conditional { if_cond, if_then, if_else } => {
                 self.check(*if_cond, &Type::Boolean)?;
@@ -91,6 +91,12 @@ impl Context {
     /// "is" is a subtype of "of", i.e. "is" can be safely used in any context "of" is expected.
     pub fn subtype(&self, is: &Type, of: &Type) -> bool {
         match (is, of) {
+            (_, Type::Empty) => true,   // top type: every type is a subtype of the empty type (empty as in structurally empty)
+            (Type::Error, _) => true,   // bottom type: no type is a subtype of the error type
+            (Type::Natural, Type::Integer) => true, // obviously not, but let's pretend
+            (Type::List(is), Type::Slice(of)) | (Type::Array(is, _), Type::Slice(of)) |
+            (Type::List(is), Type::List(of)) |  (Type::Slice(is), Type::Slice(of)) => self.subtype(is, of),
+            (Type::Array(is, is_size), Type::Array(of, of_size)) => self.subtype(is, of) && is_size == of_size,
             (Type::Tuple(is_data, is_fields), Type::Tuple(of_data, of_fields)) => {
                 // length, order, and subtype
                 if is_data.len() != of_data.len() || is_fields.len() != of_fields.len() {
@@ -131,8 +137,7 @@ impl Context {
                 }
                 true
             },
-            (Type::Function { from: is_from, to: is_to },
-             Type::Function { from: of_from, to: of_to }) => {
+            (Type::Function(is_from, is_to), Type::Function(of_from, of_to)) => {
                 self.subtype(of_from, is_from) && self.subtype(is_to, of_to)
             },
             (is, Type::Interface(signatures, associated)) => {
@@ -151,12 +156,8 @@ impl Context {
                 }
                 true
             },
-            (Type::List(is), Type::Slice(of)) | (Type::Array(is, _), Type::Slice(of)) |
-            (Type::List(is), Type::List(of)) |  (Type::Slice(is), Type::Slice(of)) => self.subtype(is, of),
-            (Type::Array(is, is_size), Type::Array(of, of_size)) => self.subtype(is, of) && is_size == of_size,
-            (Type::Natural, Type::Integer) => true, // obviously not, but let's pretend
-            (_, Type::Empty) => true,   // top type: every type is a subtype of the empty type (empty as in structurally empty)
-            (Type::Error, _) => true,   // bottom type: no type is a subtype of the error type
+            (is, Type::Generic(Some(data))) => data.contains(is),
+            (_, Type::Generic(None)) => true,
             (_, _) => is == of
         }
     }
@@ -178,12 +179,13 @@ impl Type {
                 data.iter().map(|(k, v)| (k.clone(), v.clone().deselfify(replacement))).collect()),
             Type::Tuple(data, idents) => Type::Tuple(
                 data.iter().map(|x| x.clone().deselfify(replacement)).collect(), idents),
-            Type::Function { from, to } => Type::Function {
-                from: Box::new(from.deselfify(replacement)),
-                to: Box::new(to.deselfify(replacement))
-            },
-            Type::Interface(signatures, associated) =>
-                Type::Interface(signatures, associated.map(|x| Box::new(x.deselfify(replacement)))),
+            Type::Function(from, to) => Type::Function(
+                Box::new(from.deselfify(replacement)), Box::new(to.deselfify(replacement))),
+            Type::Interface(signatures, associated) => Type::Interface(signatures,
+                associated.map(|x| Box::new(x.deselfify(replacement)))),
+            Type::Generic(Some(data)) => Type::Generic(
+                Some(data.iter().map(|x| x.clone().deselfify(replacement)).collect())),
+            Type::Generic(None) => Type::Generic(None),
         }
     }
 }

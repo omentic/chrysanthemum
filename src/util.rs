@@ -53,10 +53,7 @@ pub fn Cond(if_cond: Expression, if_then: Expression, if_else: Expression) -> Ex
 }
 
 pub fn Func(from: Type, to: Type) -> Type {
-    return Type::Function {
-        from: Box::new(from),
-        to: Box::new(to)
-    }
+    return Type::Function(Box::new(from), Box::new(to))
 }
 
 pub const Empty: Type = Type::Empty;

@@ -14,13 +14,15 @@ pub struct Signature {
     pub to: Type
 }
 
+/// Fundamental expressions for the lambda calculus.
+/// To be extended: bindings, loops/continuations, typedefs?
 // note: built-in functions do NOT go here!
+// note: we keep parameters as an Identifier because we annotate the WHOLE Abstraction
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
     Annotation{expr: Box<Expression>, kind: Type},
     Constant{term: Term},
     Variable{id: Identifier},
-    // note: we keep parameters as an Identifier because we annotate the WHOLE Abstraction
     Abstraction{param: Identifier, func: Box<Expression>},
     Application{func: Box<Expression>, arg: Box<Expression>},
     Conditional{if_cond: Box<Expression>, if_then: Box<Expression>, if_else: Box<Expression>}
@@ -29,23 +31,18 @@ pub enum Expression {
 /// All supported types.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Type {
-    Empty,
-    Error,
-    Unit,
-    Boolean,
-    Natural,
-    Integer,
-    Float,
-    String,
+    Empty, Error, Unit, Boolean,                    // primitive types
+    Natural, Integer, Float, String,
     List(Box<Type>),
-    Array(Box<Type>, usize), // todo: replace with dependent types
-    Slice(Box<Type>), // potentially fucky lifetime stuff too
-    Union(Vec<Type>), // unordered
-    Struct(BTreeMap<Identifier, Type>), // unordered
-    Tuple(Vec<Type>, Vec<Option<Identifier>>), // ordered with labels
-    Function{from: Box<Type>, to: Box<Type>},
-    Interface(Vec<Signature>, Option<Box<Type>>), // typeclasses "interfaces"
-    Oneself,
+    Array(Box<Type>, usize),                        // todo: replace with dependent types
+    Slice(Box<Type>),                               // potentially fucky lifetime stuff too
+    Union(Vec<Type>),                               // unordered
+    Struct(BTreeMap<Identifier, Type>),             // unordered
+    Tuple(Vec<Type>, Vec<Option<Identifier>>),      // ordered with labels (vectors must be same length)
+    Function(Box<Type>, Box<Type>),                 // from, to: multiple params expressed via tuples
+    Interface(Vec<Signature>, Option<Box<Type>>),   // typeclasses "interfaces"
+    Oneself,                                        // "Self" type associated with interfaces. replaced by subtyping checks
+    Generic(Option<Vec<Type>>),                     // stand in generic type. fully generic, or a list of valid types.
 }
 
 /// Data associated with a type.
@@ -53,12 +50,9 @@ pub enum Type {
 // Note: no Functions: those inhabit a separate context. it's just easier
 #[derive(Debug, Clone, PartialEq)]
 pub enum Term {
-    Unit(),
-    Boolean(bool),
-    Natural(usize),
-    Integer(isize),
-    Float(f32),
-    String(String),
+    Unit(), Boolean(bool),
+    Natural(usize), Integer(isize),
+    Float(f32), String(String),
     List(Vec<Term>),
     Array(Vec<Term>),
     Union(Box<Term>),
@@ -68,6 +62,7 @@ pub enum Term {
 
 impl Term {
     /// Convert a term into its corresponding type.
+    // Empty lists/arrays and unions currently cannot be inferred.
     pub fn convert(&self) -> Result<Type> {
         match self {
             Term::Unit() => Ok(Type::Unit),
@@ -77,14 +72,14 @@ impl Term {
             Term::Float(_) => Ok(Type::Float),
             Term::String(_) => Ok(Type::String),
             Term::List(data) => match data.len() {
-                0 => Err("attempting to get the type of an empty list!".into()),
+                0 => Err("attempting to infer the type of an empty list!".into()),
                 _ => Ok(Type::List(Box::new(data.get(0).unwrap().convert()?))),
             },
             Term::Array(data) => match data.len() {
-                0 => Err("attempting to get the type of an empty array!".into()),
+                0 => Err("attempting to infer the type of an empty array!".into()),
                 _ => Ok(Type::Array(Box::new(data.get(0).unwrap().convert()?), data.len()))
             },
-            Term::Union(data) => data.convert(),
+            Term::Union(data) => Err("attempting to infer the type of a union variant!".into()),
             Term::Struct(data) => {
                 let mut result = BTreeMap::new();
                 for (key, val) in data {
@@ -105,6 +100,8 @@ impl Term {
 
 impl Type {
     /// Get the default value of a type. Throws an error if it doesn't exist.
+    // Unions are invalid as they are not ordered.
+    // Empty, Error, Slice, Function, Interface, Onself, Generic are invalid as they cannot be constructed.
     pub fn default(&self) -> Result<Term> {
         match self {
             Type::Empty => Err("attempting to take the default term for empty".into()),
@@ -118,7 +115,7 @@ impl Type {
             Type::List(data) => Ok(Term::List(Vec::<Term>::new())),
             Type::Array(data, len) => Ok(Term::Array(vec![data.default()?; *len])),
             Type::Slice(_) => Err("attempting to take the default term of a slice".into()),
-            Type::Union(data) => Err("attempting to take the default term of a union".into()),
+            Type::Union(_) => Err("attempting to take the default term of a union".into()),
             Type::Struct(data) => {
                 let mut result = BTreeMap::new();
                 for (key, val) in data {
@@ -133,10 +130,14 @@ impl Type {
                 }
                 Ok(Term::Tuple(result, fields.clone()))
             },
-            Type::Function { from, to } =>
+            Type::Function(from, to) =>
                 Err("attempting to take the default term of a function type".into()),
-            Type::Interface(_, _) => Err("attempting to take the default term of an interface".into()),
-            Type::Oneself => Err("attempting to take the default term of Self".into()),
+            Type::Interface(_, _) =>
+                Err("attempting to take the default term of an interface".into()),
+            Type::Oneself =>
+                Err("attempting to take the default term of Self".into()),
+            Type::Generic(_) =>
+                Err("attempting to take the default term of a generic".into()),
         }
     }
 }
@@ -201,7 +202,7 @@ impl core::fmt::Display for Type {
                 }
                 write!(f, "]")
             },
-            Type::Function { from, to } => write!(f, "{}->{}", from, to),
+            Type::Function(from, to) => write!(f, "{}->{}", from, to),
             Type::Interface(data, kind) => {
                 write!(f, "interface[")?;
                 for (i, sig) in data.iter().enumerate() {
@@ -216,6 +217,18 @@ impl core::fmt::Display for Type {
                 write!(f, "]")
             },
             Type::Oneself => write!(f, "Self"),
+            Type::Generic(data) =>  {
+                write!(f, "generic[")?;
+                if let Some(data) = data {
+                    for (i, kind) in data.iter().enumerate() {
+                        write!(f, "{}", kind)?;
+                        if !(i == data.len() - 1) {
+                            write!(f, ", ")?;
+                        }
+                    }
+                }
+                write!(f, "]")
+            },
         }
     }
 }
@@ -240,6 +253,7 @@ impl core::fmt::Display for Term {
     }
 }
 
+/// expose necessary functions for the underlying HashMaps
 impl Context {
     pub fn new() -> Self {
         Context(HashMap::new(), HashMap::new())
