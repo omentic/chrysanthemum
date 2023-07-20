@@ -7,20 +7,20 @@ impl Context {
             // fall through to inference mode
             Expression::Annotation { expr, kind } => {
                 let result = self.infer(Expression::Annotation { expr, kind })?;
-                return match self.subtype(&result, &target) {
+                match self.subtype(&result, target) {
                     true => Ok(()),
                     false => Err(format!("inferred type {result} does not match target {target}").into())
                 }
             },
             // Bt-CheckInfer
-            Expression::Constant { term } => match self.subtype(&term.convert()?, &target) {
+            Expression::Constant { term } => match self.subtype(&term.convert()?, target) {
                 true => Ok(()),
                 false => Err(format!("constant is of wrong type, expected {target}").into())
                 // false => Ok(()) // all our constants are Empty for now
             },
             // Bt-CheckInfer
             Expression::Variable { id } => match self.get_term(&id) {
-                Some(term) if self.subtype(&term.convert()?, &target) => Ok(()),
+                Some(term) if self.subtype(&term.convert()?, target) => Ok(()),
                 Some(_) => Err(format!("variable {id} is of wrong type").into()),
                 None => Err(format!("failed to find variable {id} in context").into())
             },
@@ -29,14 +29,14 @@ impl Context {
                 Type::Function(from, to) => {
                     let mut context = self.clone();
                     context.insert_term(param, from.default()?);
-                    return context.check(*func, &to);
+                    return context.check(*func, to);
                 },
                 _ => Err(format!("attempting to check an abstraction with a non-function type {target}").into())
             },
             // fall through to inference mode
             Expression::Application { func, arg } => {
                 let result = &self.infer(Expression::Application { func, arg })?;
-                return match self.subtype(result, target) {
+                match self.subtype(result, target) {
                     true => Ok(()),
                     false => Err(format!("inferred type {result} does not match {target}").into())
                 }
@@ -44,9 +44,9 @@ impl Context {
             // T-If
             Expression::Conditional { if_cond, if_then, if_else } => {
                 self.check(*if_cond, &Type::Boolean)?;
-                self.check(*if_then, &target)?;
-                self.check(*if_else, &target)?;
-                return Ok(());
+                self.check(*if_then, target)?;
+                self.check(*if_else, target)?;
+                Ok(())
             }
         }
     }
@@ -65,7 +65,7 @@ impl Context {
             },
             // Bt-App
             Expression::Application { func, arg } => match self.infer(*func)? {
-                Type::Function(from, to) => self.check(*arg, &*from).map(|x| *to),
+                Type::Function(from, to) => self.check(*arg, &from).map(|x| *to),
                 _ => Err("application abstraction is not a function type".into())
             },
             // inference from an abstraction is always an error

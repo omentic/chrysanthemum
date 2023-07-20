@@ -19,8 +19,8 @@ pub fn parse_lambda(input: &str) -> Result<Expression> {
             rule num() -> Expression = p:"-"? c:['0'..='9']+ {
                 let value = c.iter().collect::<String>().parse::<usize>().unwrap();
                 Expression::Constant {
-                    term: if let Some(_) = p {
-                        Term::Integer(-1 * isize::try_from(value).unwrap())
+                    term: if p.is_some() {
+                        Term::Integer(-isize::try_from(value).unwrap())
                     } else {
                         Term::Natural(value)
                     }
@@ -98,14 +98,14 @@ pub fn parse_lambda(input: &str) -> Result<Expression> {
             }
         }
     }
-    return Ok(lambda::expr(input.trim())?);
+    Ok(lambda::expr(input.trim())?)
 }
 
 const operators: [char; 17] =
     ['=', '+', '-', '*', '/', '<', '>', '@', '$', '~', '&', '%', '|', '!', '?', '^', '\\'];
 const brackets: [char; 6] = ['(', ')', '{', '}', '[', ']'];
 const special: [char; 7] = ['.', ',', ':', ';', '`', '\'', '"'];
-const keywords: [&'static str; 3] = ["if", "else", "func"];
+const keywords: [&str; 3] = ["if", "else", "func"];
 
 pub enum Token {
     Operator(String),
@@ -148,7 +148,7 @@ pub fn lex(input: &str) -> Result<Vec<Token>> {
         match state {
             State::Default => match c {
                 ' ' if indent.blank => indent.count += 1,
-                ' ' if buffer.len() > 0 => {
+                ' ' if !buffer.is_empty() => {
                     result.push(parse_token(&buffer)?);
                     buffer.clear();
                 },
@@ -206,7 +206,7 @@ pub fn lex(input: &str) -> Result<Vec<Token>> {
                     buffer.clear();
                 },
                 _ if brackets.contains(&c) || special.contains(&c) => {
-                    if buffer.len() > 0 {
+                    if !buffer.is_empty() {
                         result.push(parse_token(&buffer)?);
                         buffer.clear();
                     }
@@ -284,7 +284,7 @@ pub fn lex(input: &str) -> Result<Vec<Token>> {
             },
         }
     }
-    return Ok(result);
+    Ok(result)
 }
 
 fn parse_token(token: &str) -> Result<Token> {
@@ -307,7 +307,7 @@ fn is_operator(token: &str) -> bool {
             return false;
         }
     }
-    return true;
+    true
 }
 
 fn is_value(token: &str) -> bool {
@@ -321,7 +321,7 @@ fn is_value(token: &str) -> bool {
             return false;
         }
     }
-    return true;
+    true
 }
 
 fn is_identifier(token: &str) -> bool {
@@ -335,5 +335,5 @@ fn is_identifier(token: &str) -> bool {
             return false;
         }
     }
-    return true;
+    true
 }

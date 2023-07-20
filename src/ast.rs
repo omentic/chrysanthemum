@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, HashMap};
 
 pub type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct Context(HashMap<Identifier, Term>, HashMap<Signature, Expression>);
 
 pub type Identifier = String;
@@ -173,7 +173,7 @@ impl core::fmt::Display for Type {
                 write!(f, "union[")?;
                 for (i, val) in data.iter().enumerate() {
                     write!(f, "{}", val)?;
-                    if !(i == data.len() - 1) {
+                    if i != data.len() - 1 {
                         write!(f, ", ")?;
                     }
                 }
@@ -183,7 +183,7 @@ impl core::fmt::Display for Type {
                 write!(f, "struct[")?;
                 for (i, (key, val)) in data.iter().enumerate() {
                     write!(f, "{}: {}", key, val)?;
-                    if !(i == data.len() - 1) {
+                    if i != data.len() - 1 {
                         write!(f, ", ")?;
                     }
                 }
@@ -196,7 +196,7 @@ impl core::fmt::Display for Type {
                         Some(key) => write!(f, "{}: {}", key, val)?,
                         None => write!(f, "{}", val)?
                     }
-                    if !(i == data.len() - 1) {
+                    if i != data.len() - 1 {
                         write!(f, ", ")?;
                     }
                 }
@@ -207,7 +207,7 @@ impl core::fmt::Display for Type {
                 write!(f, "interface[")?;
                 for (i, sig) in data.iter().enumerate() {
                     write!(f, "func {}({}): {}", sig.name, sig.from, sig.to)?;
-                    if !(i == data.len() - 1) {
+                    if i != data.len() - 1 {
                         write!(f, ", ")?;
                     }
                 }
@@ -222,7 +222,7 @@ impl core::fmt::Display for Type {
                 if let Some(data) = data {
                     for (i, kind) in data.iter().enumerate() {
                         write!(f, "{}", kind)?;
-                        if !(i == data.len() - 1) {
+                        if i != data.len() - 1 {
                             write!(f, ", ")?;
                         }
                     }

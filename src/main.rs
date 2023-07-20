@@ -2,8 +2,6 @@ use std::io::{Write, stdout, stdin};
 
 use chrysanthemum::*;
 use chrysanthemum::ast::*;
-use chrysanthemum::bidirectional::*;
-use chrysanthemum::simple::*;
 
 fn main() {
     println!("chrysanthemum");

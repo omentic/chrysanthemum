@@ -7,53 +7,48 @@ use crate::ast::*;
 pub fn unique_ident(count: &mut u8) -> String {
     *count += 1;
     if *count == 0 {
-        panic!("we've overflowed!");
+        panic!("we've overflowed!")
     } else {
-        return String::from(format!("{:X}", count));
+        format!("{:X}", count)
     }
 }
 
 pub fn Ann(expr: Expression, kind: Type) -> Expression {
-    return Expression::Annotation {
-        expr: Box::new(expr),
-        kind: kind
-    };
+    Expression::Annotation { expr: Box::new(expr), kind }
 }
 
 pub fn Const(term: Term) -> Expression {
-    return Expression::Constant { term };
+    Expression::Constant { term }
 }
 
 pub fn Var(id: &str) -> Expression {
-    return Expression::Variable {
-        id: String::from(id)
-    };
+    Expression::Variable { id: String::from(id) }
 }
 
 pub fn Abs(param: &str, func: Expression) -> Expression {
-    return Expression::Abstraction {
+    Expression::Abstraction {
         param: String::from(param),
-        func: Box::new(func),
-    };
+        func: Box::new(func)
+    }
 }
 
 pub fn App(func: Expression, arg: Expression) -> Expression {
-    return Expression::Application {
+    Expression::Application {
         func: Box::new(func),
         arg: Box::new(arg)
-    };
+    }
 }
 
 pub fn Cond(if_cond: Expression, if_then: Expression, if_else: Expression) -> Expression {
-    return Expression::Conditional {
+    Expression::Conditional {
         if_cond: Box::new(if_cond),
         if_then: Box::new(if_then),
         if_else: Box::new(if_else)
-    };
+    }
 }
 
 pub fn Func(from: Type, to: Type) -> Type {
-    return Type::Function(Box::new(from), Box::new(to))
+    Type::Function(Box::new(from), Box::new(to))
 }
 
 pub const Empty: Type = Type::Empty;
@@ -64,13 +59,13 @@ pub const Nat: Type = Type::Natural;
 pub const Int: Type = Type::Integer;
 
 pub fn Float(term: f32) -> Term {
-    return Term::Float(term)
+    Term::Float(term)
 }
 
 pub fn Str(data: &str) -> Term {
-    return Term::String(data.into())
+    Term::String(data.into())
 }
 
 pub fn Union(data: Term) -> Term {
-    return Term::Union(Box::new(data))
+    Term::Union(Box::new(data))
 }
